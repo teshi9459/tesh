@@ -1,3 +1,5 @@
+const db = require('../libs/db');
+
 module.exports = {
   name: 'ready',
   once: true,

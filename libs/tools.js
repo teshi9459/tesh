@@ -32,7 +32,7 @@ module.exports = {
   getJ: function (path, options) {
     const rawdata = fs.readFileSync(path, 'utf8');
     if (options === true)
-      console.log('tools> get JSON from ' + path) + ' |\n' + rawdata;
+      console.log('tools> get JSON from ' + path + ' |\n' + rawdata);
     return JSON.parse(rawdata);
   },
   /**
@@ -46,7 +46,7 @@ module.exports = {
     const json = JSON.stringify(obj);
     fs.writeFileSync(path, json);
     if (options === true)
-      console.log('tools> wrote Json to ' + path) + ' | ' + obj;
+      console.log('tools> wrote Json to ' + path + ' | ' + obj);
   },
   /**
    * wartet angegebnene Zeit
@@ -54,7 +54,7 @@ module.exports = {
    * @param {boolean} options - true für log.
    */
   wait: function (ms, options) {
-    var start,
+    let start,
       now = Date.now();
     while (now - start < ms) {
       now = Date.now();
@@ -82,9 +82,9 @@ module.exports = {
     let folder = path.split('/');
     folder.pop();
     if (!fs.existsSync(path)) {
-      for (var i = 2; i <= folder.length; i++) {
+      for (let i = 2; i <= folder.length; i++) {
         let rest = '';
-        for (var j = 0; j < i; j++) {
+        for (let j = 0; j < i; j++) {
           rest = rest + folder[j] + '/';
         }
         if (!fs.existsSync(rest)) fs.mkdirSync(rest);

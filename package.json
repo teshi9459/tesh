@@ -1,5 +1,5 @@
 {
-  "name": "discord-bot",
+  "name": "tesh",
   "version": "1.0.0",
   "description": "discord.js v14",
   "main": "index.js",
@@ -8,16 +8,18 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/teshi9459/discord-bot.git"
+    "url": "git+https://github.com/teshi9459/tesh.git"
   },
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/teshi9459/discord-bot/issues"
+    "url": "https://github.com/teshi9459/tesh/issues"
   },
-  "homepage": "https://github.com/teshi9459/discord-bot#readme",
+  "homepage": "https://github.com/teshi9459/tesh#readme",
   "dependencies": {
     "@discordjs/rest": "^1.1.0",
-    "discord.js": "^14.3.0"
+    "better-sqlite3": "^7.6.2",
+    "discord.js": "^14.3.0",
+    "sqlite3": "^5.1.2"
   }
 }
