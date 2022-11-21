@@ -4,7 +4,8 @@
   "description": "discord.js v14",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon",
+    "boot": "node ."
   },
   "repository": {
     "type": "git",
