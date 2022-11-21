@@ -20,6 +20,7 @@
     "@discordjs/rest": "^1.1.0",
     "better-sqlite3": "^7.6.2",
     "discord.js": "^14.3.0",
+    "nodemon": "^2.0.20",
     "sqlite3": "^5.1.2"
   }
 }
