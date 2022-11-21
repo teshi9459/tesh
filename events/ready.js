@@ -14,5 +14,6 @@ module.exports = {
       ],
       status: 'online',
     });
+    db.setupCheck();
   },
 };
