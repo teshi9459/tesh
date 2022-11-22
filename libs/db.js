@@ -194,7 +194,7 @@ module.exports = {
      * @return {Array} Reports
      */
     getWords: function (id, guild) {
-        const row = db.prepare('SELECT * FROM words WHERE usere = \'' + id + '\' AND guild = ' + guild).get();
+        const row = db.prepare('SELECT * FROM words WHERE user = \'' + id + '\' AND guild = ' + guild).get();
         try {
             return JSON.parse(row.reports).array;
         } catch (error) {
@@ -218,4 +218,65 @@ module.exports = {
             reps: JSON.stringify({ data: reports })
         }]);
     },
+
+    /**
+    * sucht ob der Channel eingetragen ist
+    * @param { String } id Channel Id
+    * @param { String } guild Guild Id
+    * @return { boolean } if exsist
+    */
+    checkChannel: function (id, guild) {
+        const row = db.prepare('SELECT * FROM channels WHERE id = \'' + id + '\' AND guild = ' + guild).all();
+        return !(row.length == 0);
+    },
+
+    /**
+    * erstellt neuen Cahnnel
+    * @param {String} id Channel Id
+    * @param {String} guild Guild Id
+    */
+    insertChannel: function (id, guild) {
+        const insert = db.prepare('INSERT INTO channels (id, guild, type) VALUES (@id, @guildid, @typ)');
+        const insertMany = db.transaction((tags) => {
+            for (const tag of tags)
+                insert.run(tag);
+        });
+        insertMany([
+            {
+                id: id,
+                guildid: guild,
+                typ: 'rpCat'
+            }
+        ]);
+    },
+
+    /**
+     * gibt alle Channel zurück
+     * @param {String} guild Guild Id
+     * @return {Array} channel
+     */
+    getChannel: function (guild) {
+        const row = db.prepare('SELECT * FROM channels WHERE guild = ' + guild).all();
+        try {
+            return row;
+        } catch (error) {
+            return undefined;
+        }
+    },
+
+    /**
+     * löscht den Channel
+     * @param {String} id Channel Id
+     * @param {String} guild Guild Id
+     */
+    deleteChannel: function (id, guild) {
+        const insert = db.prepare('DELETE FROM channels WHERE id = \'' + id + '\' AND guild = ' + guild);
+        const insertMany = db.transaction((modules) => {
+            for (const module of modules)
+                insert.run(module);
+        });
+        insertMany([{}]);
+    },
+
+
 };

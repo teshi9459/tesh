@@ -1,12 +1,12 @@
-const db = require('../libs/db');
-const dc = require('../libs/dc');
+const db = require('../../libs/db');
+const dc = require('../../libs/dc');
 const { userMention, channelMention, codeBlock } = require('discord.js');
 module.exports = {
     name: 'words',
-    content: 'msg',
     async execute(msg) {
         if (msg.content.startsWith('(') || msg.content.endsWith(')')) return;
-        //channel return, msg handler, channel commands
+        // msg handler
+        if (db.checkChannel(msg.channel.parentId)) return;
         const l = this.count(msg.content)
         const config = db.getModuleConfig(this.name, msg.guildId);
         let reports = db.getWords(msg.author.id, msg.guildId);
