@@ -17,7 +17,7 @@ module.exports = {
         db.exec('CREATE TABLE IF NOT EXISTS guilds (id VARCHAR(18) PRIMARY KEY, role VARCHAR(18));');
         db.exec('CREATE TABLE IF NOT EXISTS channels (id VARCHAR(255) NOT NULL PRIMARY KEY,guild VARCHAR(255) NOT NULL,type  VARCHAR(255) NOT NULL); ');
         db.exec('CREATE TABLE IF NOT EXISTS modules (name VARCHAR(100) NOT NULL,enabled BOOLEAN(1) NOT NULL,config TEXT NOT NULL,guild VARCHAR(18) NOT NULL);');
-        db.exec('CREATE TABLE IF NOT EXISTS words (id INTEGER PRIMARY KEY AUTOINCREMENT, userid VARCHAR(255) NOT NULL, guild VARCHAR(255) NOT NULL, reports TEXT);');
+        db.exec('CREATE TABLE IF NOT EXISTS words (user VARCHAR(18) NOT NULL, guild VARCHAR(18) NOT NULL, reports TEXT);');
         console.log('all Tables checked');
     },
 
@@ -76,7 +76,7 @@ module.exports = {
    * @param {String} id Module Id
    * @param {Boolean} enabled toggle
    * @param {String} guild Guild Id
-   * @param {JSON} settings Module Settings
+   * @param {Object} settings Module Settings
    */
     insertModule: function (id, enabled, guild, settings) {
         const insert = db.prepare('INSERT INTO modules (name, enabled, config, guild) VALUES (@id, @enabled, @config, @guildid)');
@@ -99,7 +99,7 @@ module.exports = {
      * gibt Commander Rollen Id zurück
      * @param {String} id Module Id
      * @param {String} guild Guild Id
-     * @return {JSON} configurations
+     * @return {Object} configurations
      */
     getModuleConfig: function (id, guild) {
         const row = db.prepare('SELECT * FROM modules WHERE name = \'' + id + '\' AND guild = ' + guild).get();
@@ -122,7 +122,7 @@ module.exports = {
     },
 
     /**
-     * nicht fertig
+     * updated das Modul auf aus oder an (kaput)
      * @param {String} id Module Id
      * @param {String} guild Guild Id
      * @return {Boolean} Status des Modules
@@ -139,10 +139,10 @@ module.exports = {
     },
 
     /**
-     * erneuert
+     * updated die Modul Einstellungen
      * @param {String} id Module Id
      * @param {String} guild Guild Id
-     * @param {JSON} configText Objekt  der Settings
+     * @param {Object} configText Objekt von Einstellungen
      */
     updateModuleConfig: function (id, guild, configText) {
         const insert = db.prepare('UPDATE modules set config = @status WHERE name = \'' + id + '\' AND guild = ' + guild);
@@ -151,7 +151,71 @@ module.exports = {
                 insert.run(module);
         });
         insertMany([{
-            status: JSON.stringify(configText)
+            status: Object.stringify(configText)
+        }]);
+    },
+
+    /**
+   * sucht ob der User bereits registriert ist
+   * @param {String} id User Id
+   * @param {String} guild Guild Id
+   * @return {boolean} if exsist
+   */
+    checkWords: function (id, guild) {
+        const row = db.prepare('SELECT * FROM words WHERE user = \'' + id + '\' AND guild = ' + guild).all();
+        return !(row.length == 0);
+    },
+
+    /**
+  * erstellt User für Words
+  * @param {String} id User Id
+  * @param {String} guild Guild Id
+  */
+    insertWords: function (id, guild) {
+        const insert = db.prepare('INSERT INTO words (user, guild, reports) VALUES (@id, @guildid, @reps)');
+        const insertMany = db.transaction((tags) => {
+            for (const tag of tags)
+                insert.run(tag);
+        });
+        insertMany([
+            {
+                id: id,
+                guildid: guild,
+                rpes: JSON.stringify({ data: [] })
+
+            }
+        ]);
+    },
+
+    /**
+     * gibt Words Reports zurück
+     * @param {String} id Module Id
+     * @param {String} guild Guild Id
+     * @return {Array} Reports
+     */
+    getWords: function (id, guild) {
+        const row = db.prepare('SELECT * FROM words WHERE usere = \'' + id + '\' AND guild = ' + guild).get();
+        try {
+            return JSON.parse(row.reports).array;
+        } catch (error) {
+            return undefined;
+        }
+    },
+
+    /**
+     * updated die Words reports
+     * @param {Array} reports Reports Object
+     * @param {String} id User Id
+     * @param {String} guild Guild Id
+     */
+    updateWords: function (reports, id, guild) {
+        const insert = db.prepare('UPDATE words set reports = @reps WHERE user = \'' + id + '\' AND guild = ' + guild);
+        const insertMany = db.transaction((modules) => {
+            for (const module of modules)
+                insert.run(module);
+        });
+        insertMany([{
+            reps: JSON.stringify({ data: reports })
         }]);
     },
 };

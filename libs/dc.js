@@ -19,4 +19,20 @@ module.exports = {
         text: footer,
       });
   },
+  getChannel: function (message, id) {
+    const obj = message.guild.channels.cache.find(c => c.id == id);
+    return obj;
+  },
+  getUser: function (message, id) {
+    const obj = message.guild.members.cache.find(c => c.id == id);
+    return obj.user;
+  },
+  getMember: function (message, id) {
+    const obj = message.guild.members.cache.find(c => c.id == id);
+    return obj;
+  },
+  getRole: function (message, id) {
+    const obj = message.guild.roles.cache.find(c => c.id == id);
+    return obj;
+  },
 };

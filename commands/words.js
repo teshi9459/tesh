@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('discord.js');
 const db = require('../libs/db');
 const dc = require('../libs/dc');
-const { roleMention, ChannelType } = require('discord.js');
+const { ChannelType } = require('discord.js');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('words')
@@ -76,6 +76,7 @@ module.exports = {
     ,
     async execute(interaction) {
         let configs;
+        //mod check
         if (db.checkModule('words', interaction.guildId && interaction.options.getSubcommand() == 'setup'))
             return interaction.reply({ embeds: [dc.sEmbed('Words ist bereits aktiv', 'Um das Module zu ändern schaue nach anderen Commands', interaction.guild.name, '0xaaeeff')] });
         switch (interaction.options.getSubcommand()) {
