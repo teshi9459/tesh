@@ -25,6 +25,8 @@ module.exports = {
                 .setName('list')
                 .setDescription('show list of channel')),
     async execute(interaction) {
+        if (!interaction.member.roles.cache.has(db.getGuildRole(interaction.guildId)))
+            return interaction.reply({ embeds: [dc.sEmbed('Rolle fehlt', 'Du hast nicht die benötigten Berechtigungen', 'Tesh-Bot', '0xaaeeff')] });
         switch (interaction.options.getSubcommand()) {
             case 'add':
                 if (db.checkChannel(interaction.options.getChannel('channel').id, interaction.guildId))
@@ -40,7 +42,7 @@ module.exports = {
                 break;
             case 'list':
                 const channels = db.getChannel(interaction.guildId);
-                let list = '';
+                let list = '\n';
                 for (const element of channels) {
                     list += channelMention(element.id) + '\n'
                 }

@@ -1,7 +1,6 @@
-const { SlashCommandBuilder } = require('discord.js');
+const { ChannelType, SlashCommandBuilder, channelMention } = require('discord.js');
 const db = require('../libs/db');
 const dc = require('../libs/dc');
-const { ChannelType } = require('discord.js');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('words')
@@ -76,36 +75,43 @@ module.exports = {
     ,
     async execute(interaction) {
         let configs;
-        //mod check
-        if (db.checkModule('words', interaction.guildId && interaction.options.getSubcommand() == 'setup'))
+        if (!interaction.member.roles.cache.has(db.getGuildRole(interaction.guildId)))
+            return interaction.reply({ embeds: [dc.sEmbed('Rolle fehlt', 'Du hast nicht die benötigten Berechtigungen', 'Tesh-Bot', '0xaaeeff')] });
+        if (db.checkModule('words', interaction.guildId) && interaction.options.getSubcommand() == 'setup')
             return interaction.reply({ embeds: [dc.sEmbed('Words ist bereits aktiv', 'Um das Module zu ändern schaue nach anderen Commands', interaction.guild.name, '0xaaeeff')] });
         switch (interaction.options.getSubcommand()) {
             case 'setup':
                 db.insertModule('words', false, interaction.guildId, { min: 2, max: 10, channel: interaction.options.getChannel('channel').id, warning: false });
-                await interaction.reply({ embeds: [dc.sEmbed('Words ist nun bereit', 'Änderungen können per den Commands .. ausgeführt werden.', interaction.guild.name, '0xaaeeff')] });
+                await interaction.reply({ embeds: [dc.sEmbed('Words ist nun bereit', 'Aktiviere das Modul nun mit `/words toggle true `', interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'toggle':
+                let stats = 'deaktiviert';
+                if (interaction.options.getBoolean('toggle'))
+                    stats = 'aktiviert'
                 db.updateModuleStatus('words', interaction.guildId, interaction.options.getBoolean('toggle'));
-                await interaction.reply({ embeds: [dc.sEmbed('Words', 'Das Modul wurde ...', interaction.guild.name, '0xaaeeff')] });
+                await interaction.reply({ embeds: [dc.sEmbed('Words', 'Das Modul wurde ' + stats, interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'trigger':
                 configs = db.getModuleConfig('words', interaction.guildId);
                 configs.min = interaction.options.getInteger('min');
                 configs.max = interaction.options.getInteger('max');
                 db.updateModuleConfig('words', interaction.guildId, configs);
-                await interaction.reply({ embeds: [dc.sEmbed('Words', 'Die Einstellungen wurden auf ... geändert', interaction.guild.name, '0xaaeeff')] });
+                await interaction.reply({ embeds: [dc.sEmbed('Words', `Die Einstellungen wurden auf min: ${configs.min} max: ${configs.max} geändert`, interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'channel':
                 configs = db.getModuleConfig('words', interaction.guildId);
                 configs.channel = interaction.options.getChannel('channel').id;
                 db.updateModuleConfig('words', interaction.guildId, configs);
-                await interaction.reply({ embeds: [dc.sEmbed('Words', 'Der Channel wurde auf ... geändert', interaction.guild.name, '0xaaeeff')] });
+                await interaction.reply({ embeds: [dc.sEmbed('Words', `Der Channel wurde auf ${channelMention(configs.cahnnel)} geändert`, interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'warning':
+                let stats2 = 'deaktiviert';
+                if (interaction.options.getBoolean('toggle'))
+                    stats2 = 'aktiviert'
                 configs = db.getModuleConfig('words', interaction.guildId);
                 configs.warning = interaction.options.getBoolean('toggle');
                 db.updateModuleConfig('words', interaction.guildId, configs);
-                await interaction.reply({ embeds: [dc.sEmbed('Words', 'Warnungen sind nun ...', interaction.guild.name, '0xaaeeff')] });
+                await interaction.reply({ embeds: [dc.sEmbed('Words', 'Warnungen sind nun ' * stats2, interaction.guild.name, '0xaaeeff')] });
                 break;
             default:
                 break;

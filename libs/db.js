@@ -41,8 +41,6 @@ module.exports = {
         const insertMany = db.transaction((guilds) => {
             for (const guild of guilds)
                 insert.run(guild);
-
-
         });
         insertMany([{
             id: id,
@@ -56,7 +54,7 @@ module.exports = {
      * @return {String} Commander Rollen Id
      */
     getGuildRole: function (id) {
-        const row = db.prepare('SELECT role FROM guilds WHERE id = ' + id).get();
+        const row = db.prepare('SELECT * FROM guilds WHERE id = ' + id).get();
         return row.role;
     },
 
@@ -151,7 +149,7 @@ module.exports = {
                 insert.run(module);
         });
         insertMany([{
-            status: Object.stringify(configText)
+            status: JSON.stringify(configText)
         }]);
     },
 
@@ -171,7 +169,7 @@ module.exports = {
   * @param {String} id User Id
   * @param {String} guild Guild Id
   */
-    insertWords: function (id, guild) {
+    insertWords: function (id, guild, reports) {
         const insert = db.prepare('INSERT INTO words (user, guild, reports) VALUES (@id, @guildid, @reps)');
         const insertMany = db.transaction((tags) => {
             for (const tag of tags)
@@ -181,7 +179,7 @@ module.exports = {
             {
                 id: id,
                 guildid: guild,
-                rpes: JSON.stringify({ data: [] })
+                reps: JSON.stringify({ data: reports })
 
             }
         ]);
@@ -196,19 +194,19 @@ module.exports = {
     getWords: function (id, guild) {
         const row = db.prepare('SELECT * FROM words WHERE user = \'' + id + '\' AND guild = ' + guild).get();
         try {
-            return JSON.parse(row.reports).array;
+            return JSON.parse(row.reports).data;
         } catch (error) {
-            return undefined;
+            return [];
         }
     },
 
     /**
      * updated die Words reports
-     * @param {Array} reports Reports Object
      * @param {String} id User Id
      * @param {String} guild Guild Id
+     * @param {Array} reports Reports Object
      */
-    updateWords: function (reports, id, guild) {
+    updateWords: function (id, guild, reports) {
         const insert = db.prepare('UPDATE words set reports = @reps WHERE user = \'' + id + '\' AND guild = ' + guild);
         const insertMany = db.transaction((modules) => {
             for (const module of modules)
@@ -256,12 +254,7 @@ module.exports = {
      * @return {Array} channel
      */
     getChannel: function (guild) {
-        const row = db.prepare('SELECT * FROM channels WHERE guild = ' + guild).all();
-        try {
-            return row;
-        } catch (error) {
-            return undefined;
-        }
+        return db.prepare('SELECT * FROM channels WHERE guild = ' + guild).all();
     },
 
     /**
