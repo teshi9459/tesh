@@ -102,7 +102,7 @@ module.exports = {
                 configs = db.getModuleConfig('words', interaction.guildId);
                 configs.channel = interaction.options.getChannel('channel').id;
                 db.updateModuleConfig('words', interaction.guildId, configs);
-                await interaction.reply({ embeds: [dc.sEmbed('Words', `Der Channel wurde auf ${channelMention(configs.cahnnel)} geändert`, interaction.guild.name, '0xaaeeff')] });
+                await interaction.reply({ embeds: [dc.sEmbed('Words', `Der Channel wurde auf ${channelMention(configs.channel)} geändert`, interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'warning':
                 let stats2 = 'deaktiviert';
