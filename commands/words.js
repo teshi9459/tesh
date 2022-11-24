@@ -79,6 +79,8 @@ module.exports = {
             return interaction.reply({ embeds: [dc.sEmbed('Rolle fehlt', 'Du hast nicht die benötigten Berechtigungen', 'Tesh-Bot', '0xaaeeff')] });
         if (db.checkModule('words', interaction.guildId) && interaction.options.getSubcommand() == 'setup')
             return interaction.reply({ embeds: [dc.sEmbed('Words ist bereits aktiv', 'Um das Module zu ändern schaue nach anderen Commands', interaction.guild.name, '0xaaeeff')] });
+        if (!db.checkModule('words', interaction.guildId) && !interaction.options.getSubcommand() == 'setup')
+            return interaction.reply({ embeds: [dc.sEmbed('Words muss erst erstellt werden', 'bitte benutze `/words setup` um zu starten', interaction.guild.name, '0xaaeeff')] });
         switch (interaction.options.getSubcommand()) {
             case 'setup':
                 db.insertModule('words', false, interaction.guildId, { min: 2, max: 10, channel: interaction.options.getChannel('channel').id, warning: false });
