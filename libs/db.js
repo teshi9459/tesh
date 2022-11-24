@@ -104,6 +104,7 @@ module.exports = {
         try {
             return JSON.parse(row.config);
         } catch (error) {
+            console.error(error);
             return undefined;
         }
     },

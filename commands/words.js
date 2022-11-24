@@ -111,7 +111,7 @@ module.exports = {
                 configs = db.getModuleConfig('words', interaction.guildId);
                 configs.warning = interaction.options.getBoolean('toggle');
                 db.updateModuleConfig('words', interaction.guildId, configs);
-                await interaction.reply({ embeds: [dc.sEmbed('Words', 'Warnungen sind nun ' * stats2, interaction.guild.name, '0xaaeeff')] });
+                await interaction.reply({ embeds: [dc.sEmbed('Words', 'Warnungen sind nun ' + stats2, interaction.guild.name, '0xaaeeff')] });
                 break;
             default:
                 break;
