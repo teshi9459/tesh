@@ -137,7 +137,7 @@ module.exports = {
         interaction.reply({ embeds: [dc.sEmbed('__Ticket Geschlossen__', `Das Ticket wurde von ${interaction.user} geschlossen.\nEs wird in 15min archiviert und der Channel gelöscht.`, 'Tesh-Bot Ticket System', '0xd60000')], components: [row] });
         const ticket = db.getTicket(interaction.channel.id, interaction.guildId);
         const config = db.getModuleConfig('ticket', interaction.guildId);
-        //colllector
+        //collector
         let open = true;
         const filter = i => i.customId === `ticket.open.${interaction.channel.id}`;
         const collector = interaction.channel.createMessageComponentCollector({
