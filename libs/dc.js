@@ -26,9 +26,10 @@ module.exports = {
   * @param {String} url Link for Button
   * @param {String} emoji emoji for Button
   * @param {ButtonStyle} style Buttontyp
+  * @param {Boolean} status true for disabled
   * @return {ButtonBuilder} Button
   */
-  createButton: function (id, label, style, url, emoji) {
+  createButton: function (id, label, style, url, emoji, status) {
     const obj = new ButtonBuilder()
       .setCustomId(id)
       .setLabel(label)
@@ -37,7 +38,8 @@ module.exports = {
       obj.setURL(url);
     if (emoji != undefined)
       obj.setEmoji(emoji);
-
+    if (status != undefined)
+      obj.setDisabled(status)
     return obj;
   },
   getChannel: function (message, id) {

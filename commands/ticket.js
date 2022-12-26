@@ -35,7 +35,18 @@ module.exports = {
             subcommand
                 .setName('delete')
                 .setDescription('delete pannel')
-                .addStringOption(option => option.setName('id').setDescription('Pannel Id (unten am Pannel)').setRequired(true))),
+                .addStringOption(option => option.setName('id').setDescription('Pannel Id (unten am Pannel)').setRequired(true)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('status')
+                .setDescription('change status for ticket')
+                .addStringOption(option => option.setName('type').setDescription('type of working status').setRequired(true).addChoices(
+                    { name: 'wird bearbeitet', value: 'work' },
+                    { name: 'warten auf Antwort', value: 'wait' },
+                    { name: 'Hilfe benötigt', value: 'help' },
+                    { name: 'Sonderfall', value: 'spec' },
+                    { name: 'Neu', value: 'newt' },
+                ))),
     async execute(interaction) {
         let configs;
         if (!interaction.member.roles.cache.has(db.getGuildRole(interaction.guildId)))
@@ -83,6 +94,34 @@ module.exports = {
                 configs.channel = interaction.options.getChannel('channel').id;
                 db.updateModuleConfig('ticket', interaction.guildId, configs);
                 await interaction.reply({ embeds: [dc.sEmbed('Tickets', `Der Channel wurde auf ${channelMention(configs.channel)} geändert`, interaction.guild.name, '0xaaeeff')] });
+                break;
+            case 'status':
+                let statuslong;
+                switch (interaction.options.getString('type')) {
+                    case 'work':
+                        statuslong = 'wird bearbeitet';
+                        interaction.channel.edit({ name: '🔧' + interaction.channel.name.slice(1) });
+                        break;
+                    case 'wait':
+                        statuslong = 'warten auf User';
+                        interaction.channel.edit({ name: '🕒' + interaction.channel.name.slice(1) });
+                        break;
+                    case 'help':
+                        statuslong = 'Hilfe benötigt';
+                        interaction.channel.edit({ name: '🚸' + interaction.channel.name.slice(1) });
+                        break;
+                    case 'spec':
+                        statuslong = 'Sonderfall';
+                        interaction.channel.edit({ name: '⭕' + interaction.channel.name.slice(1) });
+                        break;
+                    case 'newt':
+                        statuslong = 'neues Ticket';
+                        interaction.channel.edit({ name: '🆕' + interaction.channel.name.slice(1) });
+                        break;
+                    default:
+                        break;
+                }
+                await interaction.reply({ embeds: [dc.sEmbed('Ticket', `Der Channel wurde auf den Status **${statuslong}** geändert.\n*Bitte die nächste änderung erst in 10min ausführen!*`, 'Ticket System', '0xaaeeff')], ephemeral: true });
                 break;
             default:
                 break;

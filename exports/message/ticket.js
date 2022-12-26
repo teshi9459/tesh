@@ -16,9 +16,20 @@ module.exports = {
                 this.createTicket(i, id);
                 break;
             case 'close':
+                if (!i.member.roles.cache.has(db.getGuildRole(i.guildId) || !i.member.id == db.getTicket(i.channel.id, i.guildId).user))
+                    return i.reply({ content: 'das kannst du leider nicht', ephemeral: true });
                 this.closeTicket(i);
                 break;
-
+            case 'public':
+                if (!i.member.roles.cache.has(db.getGuildRole(i.guildId)))
+                    return i.reply({ content: 'das kannst du leider nicht', ephemeral: true });
+                this.viewTicket(i, false);
+                break;
+            case 'private':
+                if (!i.member.roles.cache.has(db.getGuildRole(i.guildId)))
+                    return i.reply({ content: 'das kannst du leider nicht', ephemeral: true });
+                this.viewTicket(i, true);
+                break;
             default:
                 break;
         }
@@ -87,6 +98,7 @@ module.exports = {
                     .catch(console.error);
                 break;
             case 'supp':
+                row.addComponents(dc.createButton('ticket.private.0', '🔒 Privat', 'Secondary', undefined, undefined, true)).addComponents(dc.createButton('ticket.public.0', '🔓 Öffentlich', 'Secondary'));
                 i.guild.channels.create({
                     name: '🆕-support',
                     type: ChannelType.GuildText,
@@ -108,8 +120,8 @@ module.exports = {
                     ],
                 })
                     .then(ticket => {
-                        db.insertTicket(ticket.id, 'char', i.user.id, i.guildId);
-                        ticket.send({ embeds: [dc.sEmbed('__Support Ticket__', 'Bitte schicke dein Anliegen hier rein. Du deine Nachricht noch in Ruhe bearbeiten. Wenn du fertig bist **Pinge bitte das Team oder dein Ansprechpartner**, dann können wir schauen wie wir dir helfen können.', 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
+                        db.insertTicket(ticket.id, 'supp', i.user.id, i.guildId);
+                        ticket.send({ embeds: [dc.sEmbed('__Support Ticket__', 'Bitte schicke dein Anliegen hier rein. Du kannst deine Nachricht noch in Ruhe bearbeiten. Wenn du fertig bist **Pinge bitte das Team oder dein Ansprechpartner**, dann können wir schauen wie wir dir helfen können.', 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
                         i.reply({ content: 'weitere Infos in deinem Ticket: ' + channelMention(ticket.id), ephemeral: true });
                         ticket.edit({ name: `🆕-${db.getTicketId(ticket.id, i.guild.id)}-${i.user.username}` });
                     })
@@ -171,6 +183,19 @@ module.exports = {
         text += '\nTesh-Bot Ticket System by teshi#9459';
         const buffer = Buffer.from(text, 'utf-8');
         return new AttachmentBuilder(buffer, { name: 'ticket.txt' });
+    },
+    viewTicket: function (i, prv) {
+        const row = new ActionRowBuilder()
+            .addComponents(dc.createButton('ticket.close.0', '✖ Close', 'Danger'))
+            .addComponents(dc.createButton('ticket.private.0', '🔒 Privat', 'Secondary', undefined, undefined, prv))
+            .addComponents(dc.createButton('ticket.public.0', '🔓 Öffentlich', 'Secondary', undefined, undefined, !prv));
+        i.channel.permissionOverwrites.edit(i.guild.id, {
+            ViewChannel: !prv,
+            SendMessages: !prv
+        });
+        i.update({
+            components: [row]
+        });
     }
 
 };
