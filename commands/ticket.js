@@ -30,7 +30,7 @@ module.exports = {
                     { name: 'Support', value: 'supp' },
                 ))
                 .addStringOption(option => option.setName('info').setDescription('info on the pannel').setRequired(true))
-                .addChannelOption(option => option.setName('category').setDescription('Categorie for new Tickets').setRequired(true).addChannelTypes(ChannelType.GuildCategory)))
+                .addChannelOption(option => option.setName('category').setDescription('Category for new Tickets').setRequired(true).addChannelTypes(ChannelType.GuildCategory)))
         .addSubcommand(subcommand =>
             subcommand
                 .setName('delete')
@@ -97,26 +97,27 @@ module.exports = {
                 break;
             case 'status':
                 let statuslong;
+                const name = interaction.channel.name.slice(1);
                 switch (interaction.options.getString('type')) {
                     case 'work':
                         statuslong = 'wird bearbeitet';
-                        interaction.channel.edit({ name: '🔧' + interaction.channel.name.slice(1) });
+                        interaction.channel.edit({ name: '🔧' + name });
                         break;
                     case 'wait':
                         statuslong = 'warten auf User';
-                        interaction.channel.edit({ name: '🕒' + interaction.channel.name.slice(1) });
+                        interaction.channel.edit({ name: '🕒' + name });
                         break;
                     case 'help':
                         statuslong = 'Hilfe benötigt';
-                        interaction.channel.edit({ name: '🚸' + interaction.channel.name.slice(1) });
+                        interaction.channel.edit({ name: '🚸' + name });
                         break;
                     case 'spec':
                         statuslong = 'Sonderfall';
-                        interaction.channel.edit({ name: '⭕' + interaction.channel.name.slice(1) });
+                        interaction.channel.edit({ name: '⭕' + name });
                         break;
                     case 'newt':
                         statuslong = 'neues Ticket';
-                        interaction.channel.edit({ name: '🆕' + interaction.channel.name.slice(1) });
+                        interaction.channel.edit({ name: '🆕' + name });
                         break;
                     default:
                         break;
