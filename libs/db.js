@@ -17,8 +17,10 @@ module.exports = {
         db.exec('CREATE TABLE IF NOT EXISTS guilds (id VARCHAR(18) PRIMARY KEY, role VARCHAR(18));');
         db.exec('CREATE TABLE IF NOT EXISTS channels (id VARCHAR(255) NOT NULL PRIMARY KEY,guild VARCHAR(255) NOT NULL,type  VARCHAR(255) NOT NULL); ');
         db.exec('CREATE TABLE IF NOT EXISTS modules (name VARCHAR(100) NOT NULL,enabled BOOLEAN(1) NOT NULL,config TEXT NOT NULL,guild VARCHAR(18) NOT NULL);');
-        db.exec('CREATE TABLE IF NOT EXISTS words (user VARCHAR(18) NOT NULL, guild VARCHAR(18) NOT NULL, reports TEXT);');
+        db.exec('CREATE TABLE IF NOT EXISTS tickets ( id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, channel VARCHAR (18) NOT NULL, type VRACHAR (4) NOT NULL, user VARCHAR (18) NOT NULL, guild VARCHAR (18) NOT NULL, closed BOOLEAN NOT NULL DEFAULT (false), content TEXT);');
+        db.exec('CREATE TABLE IF NOT EXISTS ticketp ( message VARCHAR (18) NOT NULL PRIMARY KEY, channel VARCHAR (18) NOT NULL, type VARCHAR (4) NOT NULL, category VARCHAR (18) NOT NULL);');
         console.log('all Tables checked');
+
     },
 
     /**
@@ -272,5 +274,149 @@ module.exports = {
         insertMany([{}]);
     },
 
+    /**
+  * erstellt ein Ticketpannel
+  * @param {String} message Message Id (Pannel)
+  * @param {String} channel Channel Id
+  * @param {String} type type of pannel
+  * @param {String} categorie category for new tickets
+  */
+    insertPannel: function (message, channel, type, category) {
+        const insert = db.prepare('INSERT INTO ticketp (message, channel, type, category) VALUES (@message, @channel, @type, @category)');
+        const insertMany = db.transaction((tags) => {
+            for (const tag of tags)
+                insert.run(tag);
+        });
+        insertMany([
+            {
+                message: message,
+                channel: channel,
+                type: type,
+                category: category
+            }
+        ]);
+    },
 
+    /**
+    * löscht Ticket Pannels
+    * @param {String} id Ticket Id
+    * @param {String} channel Channel Id
+    */
+    deletePannel: function (id, channel) {
+        const insert = db.prepare('DELETE FROM ticketp WHERE message = \'' + id + '\' AND channel = ' + channel);
+        const insertMany = db.transaction((modules) => {
+            for (const module of modules)
+                insert.run(module);
+        });
+        insertMany([{}]);
+    },
+
+    /**
+     * gibt Ticket Pannel zurück
+     * @param {String} id Module Id
+     * @return {Object} Pannel
+     */
+    getPannel: function (id) {
+        const row = db.prepare(`SELECT * FROM ticketp WHERE message = ${id}`).get();
+        return row;
+    },
+
+    /**
+ * erstellt ein Ticket
+ * @param {String} channel Channel Id
+ * @param {String} type type of pannel
+ * @param {String} user User Id
+ * @param {String} guild Guild Id
+ */
+    insertTicket: function (channel, type, user, guild) {
+        const content = JSON.stringify({ data: [] });
+        const insert = db.prepare('INSERT INTO tickets (channel, type, user, guild, content) VALUES ( @channel, @type, @user, @guild, @content)');
+        const insertMany = db.transaction((tags) => {
+            for (const tag of tags)
+                insert.run(tag);
+        });
+        insertMany([
+            {
+                channel: channel,
+                type: type,
+                user: user,
+                guild: guild,
+                content: content
+            }
+        ]);
+    },
+
+    /**
+     * gibt Ticket Id zurück
+     * @param {String} channel Channel Id
+     * @param {String} guild Guild Id
+     * @return {Integer} Id
+     */
+    getTicketId: function (channel, guild) {
+        const row = db.prepare(`SELECT * FROM tickets WHERE channel = ${channel} AND guild = ${guild}`).get();
+        return row.id;
+    },
+
+    /**
+     * gibt Ticket zurück
+     * @param {String} id channel Id
+     * @param {String} guild Guild Id
+     * @return {Object} Ticket
+   */
+    getTicket: function (id, guild) {
+        const row = db.prepare(`SELECT * FROM tickets WHERE channel = ${id} AND guild = ${guild}`).get();
+        return row;
+    },
+
+    /**
+     * gibt Ticket Content zurück
+     * @param {String} id channel Id
+     * @param {String} guild Guild Id
+     * @return {Object} Data Object
+   */
+    getTicketContent: function (id, guild) {
+        const row = db.prepare(`SELECT * FROM tickets WHERE channel = ${id} AND guild = ${guild}`).get();
+        return JSON.parse(row.content);
+    },
+
+    /**
+     * updated Ticket content
+     * @param {String} id Ticket Id
+     * @param {String} guild Guild Id
+     * @param {Object} content Object of Content
+    */
+    updateTicketContent: function (id, guild, content) {
+        const insert = db.prepare('UPDATE tickets set content = @cont WHERE channel = ' + id + ' AND guild = ' + guild);
+        const insertMany = db.transaction((modules) => {
+            for (const module of modules)
+                insert.run(module);
+        });
+        insertMany([{
+            cont: JSON.stringify(content)
+        }]);
+    },
+
+    /**
+     * schließt ein Ticket
+     * @param {String} id Ticket Id
+    */
+    closeTicket: function (id) {
+        const insert = db.prepare('UPDATE tickets set closed = true WHERE id = ' + id);
+        const insertMany = db.transaction((modules) => {
+            for (const module of modules)
+                insert.run(module);
+        });
+        insertMany([{}]);
+    },
+
+    /**
+    * sucht ob der Ticket Channel eingetragen ist
+    * @param { String } id Channel Id
+    * @param { String } guild Guild Id
+    * @return { boolean } if exsist
+    */
+    checkTicketChannel: function (id, guild) {
+        const row = db.prepare('SELECT * FROM tickets WHERE channel = \'' + id + '\' AND guild = ' + guild).all();
+        return !(row.length == 0);
+    },
 };
