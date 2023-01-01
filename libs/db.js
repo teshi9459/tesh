@@ -72,6 +72,20 @@ module.exports = {
     },
 
     /**
+    * sucht ob das Module angeschaltet ist
+    * @param {String} id Modul Id
+    * @param {String} guild Guild Id
+    * @return {boolean} if on
+    */
+    isModuleOn: function (id, guild) {
+        const row = db.prepare('SELECT enabled FROM modules WHERE name = \'' + id + '\' AND guild = ' + guild).get();
+        if (row === undefined)
+            return false;
+        else
+            return row.enabled;
+    },
+
+    /**
    * erstellt Module in DB
    * @param {String} id Module Id
    * @param {Boolean} enabled toggle

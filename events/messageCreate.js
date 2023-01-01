@@ -7,7 +7,7 @@ module.exports = {
         const commandFiles = fs.readdirSync('./exports/message/').filter(file => file.endsWith('.js'));
         for (const file of commandFiles) {
             const modul = require(`../exports/message/${file}`);
-            if (!db.checkModule(file.slice(0, file.length - 3), message.guildId)) return;
+            if (!db.isModuleOn(file.slice(0, file.length - 3), message.guildId)) continue;
             try {
                 modul.execute(message);
             } catch (error) {
