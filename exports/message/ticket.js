@@ -142,7 +142,7 @@ module.exports = {
         const filter = i => i.customId === `ticket.open.${interaction.channel.id}`;
         const collector = interaction.channel.createMessageComponentCollector({
             filter,
-            time: 15 * 60 * 1000
+            time: 0.1 * 60 * 1000
         });
         collector.on('collect',
             async i => {
@@ -177,6 +177,7 @@ module.exports = {
                 const msg = i.channel.messages.cache.find(m => m.id == element);
                 text += msg.author.tag + ' -\n' + msg.content + '\n';
             } catch (error) {
+                console.log(error);
                 text += '#error by fetching message\n';
             }
         }
