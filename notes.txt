@@ -1,0 +1,9 @@
+insta -
+	- profile create | username | private | bio | charname | media
+	- profile edit | username | private | bio
+	- profile delete | charname | username
+
+	- post create media | text | username
+	- post delete id | username
+	
+	- search | text

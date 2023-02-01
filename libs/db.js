@@ -1,3 +1,4 @@
+const { Attachment } = require('discord.js');
 const fs = require('fs');
 const tools = require('./tools');
 const db = require('better-sqlite3')('database.sqlite');
@@ -14,11 +15,14 @@ module.exports = {
      * checkt ob alle Tabellen exsitieren
      */
     setupCheck: function () {
+        tools.path('./database/Yurest/');
         db.exec('CREATE TABLE IF NOT EXISTS guilds (id VARCHAR(18) PRIMARY KEY, role VARCHAR(18));');
         db.exec('CREATE TABLE IF NOT EXISTS channels (id VARCHAR(255) NOT NULL PRIMARY KEY,guild VARCHAR(255) NOT NULL,type  VARCHAR(255) NOT NULL); ');
         db.exec('CREATE TABLE IF NOT EXISTS modules (name VARCHAR(100) NOT NULL,enabled BOOLEAN(1) NOT NULL,config TEXT NOT NULL,guild VARCHAR(18) NOT NULL);');
         db.exec('CREATE TABLE IF NOT EXISTS tickets ( id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, channel VARCHAR (18) NOT NULL, type VRACHAR (4) NOT NULL, user VARCHAR (18) NOT NULL, guild VARCHAR (18) NOT NULL, closed BOOLEAN NOT NULL DEFAULT (false), content TEXT);');
         db.exec('CREATE TABLE IF NOT EXISTS ticketp ( message VARCHAR (18) NOT NULL PRIMARY KEY, channel VARCHAR (18) NOT NULL, type VARCHAR (4) NOT NULL, category VARCHAR (18) NOT NULL);');
+
+        db.exec('CREATE TABLE IF NOT EXISTS yurestprofile (guild VARCHAR(18), user VARCHAR(18), charname VARCHAR PRIMARY KEY, username VARCHAR, private BOOLEAN, bio VARCHAR(300), media VARCHAR); ');
         console.log('all Tables checked');
 
     },
@@ -419,4 +423,33 @@ module.exports = {
         const row = db.prepare('SELECT * FROM tickets WHERE channel = \'' + id + '\' AND guild = ' + guild).all();
         return !(row.length == 0);
     },
+
+    /**
+    * erstellt ein Yurest Profil
+    * @param {String} guild Guild Id
+    * @param {String} user User Id
+    * @param {String} charanme name of Char
+    * @param {String} username username
+    * @param {String} biography Biography
+    * @param {Boolean} private if Profile is private = true
+    * @param {Attachment} media Discord Attachment to store
+    */
+    insertYurestProfile: function (guild, user, charname, username, biography, privae, media) {
+        const content = JSON.stringify({ data: [] });
+        const insert = db.prepare('INSERT INTO yurestprofile (channel, type, user, guild, content) VALUES ( @channel, @type, @user, @guild, @content)');
+        const insertMany = db.transaction((tags) => {
+            for (const tag of tags)
+                insert.run(tag);
+        });
+        insertMany([
+            {
+                channel: channel,
+                type: type,
+                user: user,
+                guild: guild,
+                content: content
+            }
+        ]);
+    },
+
 };
