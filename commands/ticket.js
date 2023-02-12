@@ -69,7 +69,7 @@ module.exports = {
                     const row = new ActionRowBuilder()
                         .addComponents(dc.createButton('ticket.create.' + msg.id, '📨 Ticket', ButtonStyle.Primary, null,));
                     msg.edit({
-                        embeds: [dc.sEmbed(interaction.options.getString('name') + 'Ticket', interaction.options.getString('info') + '\n\n*öffne ein Ticket in dem du auf den Button klickst* ↓', 'Ticket Pannel ' + msg.id, '0xaaeeff')], components: [row]
+                        embeds: [dc.sEmbed(interaction.options.getString('name') + ' Ticket', interaction.options.getString('info') + '\n\n*öffne ein Ticket in dem du auf den Button klickst* ↓', 'Ticket Pannel ' + msg.id, '0xaaeeff')], components: [row]
                     });
                 });
                 await interaction.deleteReply();
