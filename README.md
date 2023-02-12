@@ -43,6 +43,12 @@ Tesh stellt ein Ticket-System zur verfügung, welches durch Tickets durch Ticket
 
 Pannel:
 
-- erstelle ein Pannel mit `/ticket pannel`
+- erstelle ein Pannel mit `/ticket pannel` `type` `info` `category`
+
+1. `type` ▷ wähle eine der Kategorien, bei Support oder Bewerbung kann das Ticket öffentlich gemacht werden (für alle User sichtbar). Ansonsten ändern sich nur die Texte in der ersten Nachricht im Ticket.
+2. `info` der hier eingegebene Text ist dann im erstellten Pannel zu lesen.
+3. `category` Hier wähle die Channel-Kategorie in der neue Ticket-Channel erstellt werden sollen.
+
+Und fertig ist das Pannel.
 
 Tickets:
