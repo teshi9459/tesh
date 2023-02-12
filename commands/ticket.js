@@ -24,11 +24,8 @@ module.exports = {
             subcommand
                 .setName('pannel')
                 .setDescription('create a Ticket-Pannel')
-                .addStringOption(option => option.setName('type').setDescription('special pannel type').setRequired(true).addChoices(
-                    { name: 'Steckbrief', value: 'char' },
-                    { name: 'Bewerbung', value: 'team' },
-                    { name: 'Support', value: 'supp' },
-                ))
+                .addStringOption(option => option.setName('name').setDescription('What kind of ticket should be created (Support, Abgabe, etc)').setRequired(true))
+                .addStringOption(option => option.setName('text').setDescription('Text that is showen in a new Ticket').setRequired(true))
                 .addStringOption(option => option.setName('info').setDescription('info on the pannel').setRequired(true))
                 .addChannelOption(option => option.setName('category').setDescription('Category for new Tickets').setRequired(true).addChannelTypes(ChannelType.GuildCategory)))
         .addSubcommand(subcommand =>
@@ -68,11 +65,11 @@ module.exports = {
                 await interaction.channel.send({
                     embeds: [dc.sEmbed('Ticket', 'Pannel wird generiert', 'Ticket System', '0xea5d5d')]
                 }).then(msg => {
-                    db.insertPannel(msg.id, interaction.channelId, interaction.options.getString('type'), interaction.options.getChannel('category').id);
+                    db.insertPannel(msg.id, interaction.channelId, interaction.options.getString('text'), interaction.options.getString('name'), interaction.options.getChannel('category').id);
                     const row = new ActionRowBuilder()
                         .addComponents(dc.createButton('ticket.create.' + msg.id, '📨 Ticket', ButtonStyle.Primary, null,));
                     msg.edit({
-                        embeds: [dc.sEmbed('Ticket', interaction.options.getString('info') + '\n\n*öffne ein Ticket in dem du auf den Button klickst* ↓', 'Ticket Pannel ' + msg.id, '0xaaeeff')], components: [row]
+                        embeds: [dc.sEmbed(interaction.options.getString('name') + 'Ticket', interaction.options.getString('info') + '\n\n*öffne ein Ticket in dem du auf den Button klickst* ↓', 'Ticket Pannel ' + msg.id, '0xaaeeff')], components: [row]
                     });
                 });
                 await interaction.deleteReply();
