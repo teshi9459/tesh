@@ -61,7 +61,7 @@ module.exports = {
         })
             .then(ticket => {
                 db.insertTicket(ticket.id, pannel.name, i.user.id, i.guildId);
-                ticket.send({ embeds: [dc.sEmbed('__' + pannel.type + ' Ticket__', pannel.text, 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
+                ticket.send({ embeds: [dc.sEmbed('__' + pannel.name + ' Ticket__', pannel.text, 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
                 i.reply({ content: 'weitere Infos in deinem Ticket: ' + channelMention(ticket.id), ephemeral: true });
                 ticket.edit({ name: `🆕-${db.getTicketId(ticket.id, i.guild.id)}-${i.user.username}` });
             })
