@@ -51,7 +51,7 @@ module.exports = {
                 },
                 {
                     id: i.user.id,
-                    allow: [PermissionsBitField.Flags.SendMessages],
+                    allow: [PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ViewChannel],
                 },
                 {
                     id: config.role,
