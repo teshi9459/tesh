@@ -80,8 +80,9 @@ module.exports = {
                 await interaction.reply({ embeds: [dc.sEmbed('Yurest', `Die Einstellungen wurden auf\nFeed: ${configs.channel}\nRolle: ${configs.role} geändert`, interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'profile_create':
-                db.insertYurestProfile(interaction.guildId, interaction.user.id, interaction.options.getString('charname'), interaction.options.getString('username'), interaction.options.getString('biography'), interaction.options.getBoolean('private'), interaction.options.getAttachment('media'));
-                await interaction.reply({ embeds: [dc.sEmbed('Yurest', 'dein profil wurde erstellt', 'Tesh-Bot', '0xaaeeff')] });
+                db.insertYurestProfile(interaction.guildId, interaction.user.id, interaction.options.getString('charname'), interaction.options.getString('username'), interaction.options.getString('biography'), interaction.options.getBoolean('private'), interaction.options.getAttachment('media').url);
+                const data = db.getYurestProfile(interaction.guildId, interaction.options.getString('username'));
+                await interaction.reply({ embeds: [dc.sEmbed('Yurest', 'dein profil wurde erstellt\n' + data.media, 'Tesh-Bot', '0xaaeeff')] });
                 break;
             case 'profile_edit':
                 db.updateYurestProfile(interaction.guildId, interaction.user.id, interaction.options.getString('username'), interaction.options.getString('biography'), interaction.options.getBoolean('private'), interaction.options.getAttachment('media'));
