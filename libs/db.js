@@ -15,7 +15,8 @@ module.exports = {
      * checkt ob alle Tabellen exsitieren
      */
     setupCheck: function () {
-        tools.path('./database/Yurest/');
+        tools.path('./database/Yurest/profile');
+        tools.path('./database/Yurest/post');
         db.exec('CREATE TABLE IF NOT EXISTS guilds (id VARCHAR(18) PRIMARY KEY, role VARCHAR(18));');
         db.exec('CREATE TABLE IF NOT EXISTS channels (id VARCHAR(255) NOT NULL PRIMARY KEY,guild VARCHAR(255) NOT NULL,type  VARCHAR(255) NOT NULL); ');
         db.exec('CREATE TABLE IF NOT EXISTS modules (name VARCHAR(100) NOT NULL,enabled BOOLEAN(1) NOT NULL,config TEXT NOT NULL,guild VARCHAR(18) NOT NULL);');
