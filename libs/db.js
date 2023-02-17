@@ -20,10 +20,12 @@ module.exports = {
         db.exec('CREATE TABLE IF NOT EXISTS guilds (id VARCHAR(18) PRIMARY KEY, role VARCHAR(18));');
         db.exec('CREATE TABLE IF NOT EXISTS channels (id VARCHAR(255) NOT NULL PRIMARY KEY,guild VARCHAR(255) NOT NULL,type  VARCHAR(255) NOT NULL); ');
         db.exec('CREATE TABLE IF NOT EXISTS modules (name VARCHAR(100) NOT NULL,enabled BOOLEAN(1) NOT NULL,config TEXT NOT NULL,guild VARCHAR(18) NOT NULL);');
+
         db.exec('CREATE TABLE IF NOT EXISTS tickets ( id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, channel VARCHAR (18) NOT NULL, type VRACHAR (4) NOT NULL, user VARCHAR (18) NOT NULL, guild VARCHAR (18) NOT NULL, closed BOOLEAN NOT NULL DEFAULT (false), content TEXT);');
         db.exec('CREATE TABLE IF NOT EXISTS ticketp ( message VARCHAR (18) NOT NULL PRIMARY KEY, channel VARCHAR (18) NOT NULL, type VARCHAR (4) NOT NULL, category VARCHAR (18) NOT NULL);');
 
         db.exec('CREATE TABLE IF NOT EXISTS yurestprofile (guild VARCHAR(18), user VARCHAR(18), charname VARCHAR PRIMARY KEY, username VARCHAR, private BOOLEAN, bio VARCHAR(300), media VARCHAR); ');
+
         console.log('all Tables checked');
 
     },
@@ -74,6 +76,20 @@ module.exports = {
     checkModule: function (id, guild) {
         const row = db.prepare('SELECT * FROM modules WHERE name = \'' + id + '\' AND guild = ' + guild).all();
         return !(row.length == 0);
+    },
+
+    /**
+    * sucht ob das Module angeschaltet ist
+    * @param {String} id Modul Id
+    * @param {String} guild Guild Id
+    * @return {boolean} if on
+    */
+    isModuleOn: function (id, guild) {
+        const row = db.prepare('SELECT enabled FROM modules WHERE name = \'' + id + '\' AND guild = ' + guild).get();
+        if (row === undefined)
+            return false;
+        else
+            return row.enabled;
     },
 
     /**
@@ -283,11 +299,12 @@ module.exports = {
   * erstellt ein Ticketpannel
   * @param {String} message Message Id (Pannel)
   * @param {String} channel Channel Id
-  * @param {String} type type of pannel
+  * @param {String} text text for new tickets
+  * @param {String} name type of tickets
   * @param {String} categorie category for new tickets
   */
-    insertPannel: function (message, channel, type, category) {
-        const insert = db.prepare('INSERT INTO ticketp (message, channel, type, category) VALUES (@message, @channel, @type, @category)');
+    insertPannel: function (message, channel, text, name, category) {
+        const insert = db.prepare('INSERT INTO ticketp (message, channel, text, name, category) VALUES (@message, @channel, @text, @name, @category)');
         const insertMany = db.transaction((tags) => {
             for (const tag of tags)
                 insert.run(tag);
@@ -296,7 +313,8 @@ module.exports = {
             {
                 message: message,
                 channel: channel,
-                type: type,
+                text: text,
+                name: name,
                 category: category
             }
         ]);
@@ -329,13 +347,13 @@ module.exports = {
     /**
  * erstellt ein Ticket
  * @param {String} channel Channel Id
- * @param {String} type type of pannel
+ * @param {String} name type of ticket
  * @param {String} user User Id
  * @param {String} guild Guild Id
  */
-    insertTicket: function (channel, type, user, guild) {
+    insertTicket: function (channel, name, user, guild) {
         const content = JSON.stringify({ data: [] });
-        const insert = db.prepare('INSERT INTO tickets (channel, type, user, guild, content) VALUES ( @channel, @type, @user, @guild, @content)');
+        const insert = db.prepare('INSERT INTO tickets (channel, name, user, guild, content) VALUES ( @channel, @name, @user, @guild, @content)');
         const insertMany = db.transaction((tags) => {
             for (const tag of tags)
                 insert.run(tag);
@@ -343,7 +361,7 @@ module.exports = {
         insertMany([
             {
                 channel: channel,
-                type: type,
+                name: name,
                 user: user,
                 guild: guild,
                 content: content

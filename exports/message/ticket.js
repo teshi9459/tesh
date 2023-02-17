@@ -1,6 +1,6 @@
 const db = require('../../libs/db');
 const dc = require('../../libs/dc');
-const { roleMention, channelMention, AttachmentBuilder, ActionRowBuilder, ChannelType, PermissionsBitField, userMention } = require('discord.js');
+const { channelMention, AttachmentBuilder, ActionRowBuilder, ChannelType, PermissionsBitField, userMention } = require('discord.js');
 const interactionCreate = require('../../events/interactionCreate');
 module.exports = {
     name: 'ticket',
@@ -38,98 +38,34 @@ module.exports = {
         const pannel = db.getPannel(pannelId);
         const config = db.getModuleConfig('ticket', i.guildId);
         let row = new ActionRowBuilder().addComponents(dc.createButton('ticket.close.0', '✖ Close', 'Danger'));
-        switch (pannel.type) {
-            case 'char':
-                i.guild.channels.create({
-                    name: '🆕-abgabe',
-                    type: ChannelType.GuildText,
-                    reason: 'neues Ticket',
-                    parent: pannel.category,
-                    permissionOverwrites: [
-                        {
-                            id: i.guild.id,
-                            deny: [PermissionsBitField.Flags.SendMessages],
-                        },
-                        {
-                            id: i.user.id,
-                            allow: [PermissionsBitField.Flags.SendMessages],
-                        },
-                        {
-                            id: config.role,
-                            allow: [PermissionsBitField.Flags.SendMessages],
-                        },
-                    ],
-                })
-                    .then(ticket => {
-                        db.insertTicket(ticket.id, 'char', i.user.id, i.guildId);
-                        ticket.send({ embeds: [dc.sEmbed('__Steckbrief Abgabe__', 'Bitte schicke hier dein Steckbrief rein. Du kannst ihn noch in Ruhe bearbeiten. Wenn du fertig bist **Pinge bitte ' + roleMention(config.role) + '**, damit wir mit der Abnahme starten können.', 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
-                        i.reply({ content: 'weitere Infos in deinem Ticket: ' + channelMention(ticket.id), ephemeral: true });
-                        ticket.edit({ name: `🆕-${db.getTicketId(ticket.id, i.guild.id)}-${i.user.username}` });
-                    })
-                    .catch(console.error);
-                break;
-            case 'team':
-                i.guild.channels.create({
-                    name: '🆕-bewerbung',
-                    type: ChannelType.GuildText,
-                    reason: 'neues Ticket',
-                    parent: pannel.category,
-                    permissionOverwrites: [
-                        {
-                            id: i.guild.id,
-                            deny: [PermissionsBitField.Flags.ViewChannel],
-                        },
-                        {
-                            id: i.user.id,
-                            allow: [PermissionsBitField.Flags.SendMessages],
-                        },
-                        {
-                            id: config.role,
-                            allow: [PermissionsBitField.Flags.SendMessages],
-                        },
-                    ],
-                })
-                    .then(ticket => {
-                        db.insertTicket(ticket.id, 'team', i.user.id, i.guildId);
-                        ticket.send({ embeds: [dc.sEmbed('__Bewerbung__', 'Bitte schicke hier deine Bewerbung rein. Du kannst sie noch in Ruhe bearbeiten. Wenn du fertig bist **Pinge bitte ein Team Mitglied**, damit wir mit der Bewerbung starten können.', 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
-                        i.reply({ content: 'weitere Infos in deinem Ticket: ' + channelMention(ticket.id), ephemeral: true });
-                        ticket.edit({ name: `🆕-${db.getTicketId(ticket.id, i.guild.id)}-${i.user.username}` });
-                    })
-                    .catch(console.error);
-                break;
-            case 'supp':
-                row.addComponents(dc.createButton('ticket.private.0', '🔒 Privat', 'Secondary', undefined, undefined, true)).addComponents(dc.createButton('ticket.public.0', '🔓 Öffentlich', 'Secondary'));
-                i.guild.channels.create({
-                    name: '🆕-support',
-                    type: ChannelType.GuildText,
-                    reason: 'neues Ticket',
-                    parent: pannel.category,
-                    permissionOverwrites: [
-                        {
-                            id: i.guild.id,
-                            deny: [PermissionsBitField.Flags.ViewChannel],
-                        },
-                        {
-                            id: i.user.id,
-                            allow: [PermissionsBitField.Flags.SendMessages],
-                        },
-                        {
-                            id: config.role,
-                            allow: [PermissionsBitField.Flags.SendMessages],
-                        },
-                    ],
-                })
-                    .then(ticket => {
-                        db.insertTicket(ticket.id, 'supp', i.user.id, i.guildId);
-                        ticket.send({ embeds: [dc.sEmbed('__Support Ticket__', 'Bitte schicke dein Anliegen hier rein. Du kannst deine Nachricht noch in Ruhe bearbeiten. Wenn du fertig bist **Pinge bitte das Team oder dein Ansprechpartner**, dann können wir schauen wie wir dir helfen können.', 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
-                        i.reply({ content: 'weitere Infos in deinem Ticket: ' + channelMention(ticket.id), ephemeral: true });
-                        ticket.edit({ name: `🆕-${db.getTicketId(ticket.id, i.guild.id)}-${i.user.username}` });
-                    })
-                    .catch(console.error);
-                break;
-            default:
-                break;
-        }
+        row.addComponents(dc.createButton('ticket.private.0', '🔒 Privat', 'Secondary', undefined, undefined, true)).addComponents(dc.createButton('ticket.public.0', '🔓 Öffentlich', 'Secondary'));
+        i.guild.channels.create({
+            name: '🆕-' + pannel.name,
+            type: ChannelType.GuildText,
+            reason: 'neues Ticket',
+            parent: pannel.category,
+            permissionOverwrites: [
+                {
+                    id: i.guild.id,
+                    deny: [PermissionsBitField.Flags.ViewChannel],
+                },
+                {
+                    id: i.user.id,
+                    allow: [PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ViewChannel],
+                },
+                {
+                    id: config.role,
+                    allow: [PermissionsBitField.Flags.SendMessages],
+                },
+            ],
+        })
+            .then(ticket => {
+                db.insertTicket(ticket.id, pannel.name, i.user.id, i.guildId);
+                ticket.send({ embeds: [dc.sEmbed('__' + pannel.name + ' Ticket__', pannel.text, 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
+                i.reply({ content: 'weitere Infos in deinem Ticket: ' + channelMention(ticket.id), ephemeral: true });
+                ticket.edit({ name: `🆕-${db.getTicketId(ticket.id, i.guild.id)}-${i.user.username}` });
+            })
+            .catch(console.error);
 
     },
     closeTicket: function (interaction) {
@@ -177,6 +113,7 @@ module.exports = {
                 const msg = i.channel.messages.cache.find(m => m.id == element);
                 text += msg.author.tag + ' -\n' + msg.content + '\n';
             } catch (error) {
+                console.log(error);
                 text += '#error by fetching message\n';
             }
         }
