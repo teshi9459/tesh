@@ -24,7 +24,7 @@ module.exports = {
         db.exec('CREATE TABLE IF NOT EXISTS tickets ( id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, channel VARCHAR (18) NOT NULL, type VRACHAR (4) NOT NULL, user VARCHAR (18) NOT NULL, guild VARCHAR (18) NOT NULL, closed BOOLEAN NOT NULL DEFAULT (false), content TEXT);');
         db.exec('CREATE TABLE IF NOT EXISTS ticketp ( message VARCHAR (18) NOT NULL PRIMARY KEY, channel VARCHAR (18) NOT NULL, type VARCHAR (4) NOT NULL, category VARCHAR (18) NOT NULL);');
 
-        db.exec('CREATE TABLE yurestprofile ( guild VARCHAR (18), user VARCHAR (18), charname VARCHAR PRIMARY KEY, username VARCHAR UNIQUE, private BOOLEAN, bio VARCHAR (300), media VARCHAR);); ');
+        db.exec('CREATE TABLE IF NOT EXISTS yurestprofile ( guild VARCHAR (18), user VARCHAR (18), charname VARCHAR PRIMARY KEY, username VARCHAR UNIQUE, private BOOLEAN, bio VARCHAR (300), media VARCHAR);');
         db.exec('CREATE TABLE IF NOT EXISTS yurestpost ( guild VARCHAR (18) NOT NULL, user VARCHAR (18) NOT NULL, charname VARCHAR NOT NULL, text TEXT, media VARCHAR, deleted BOOLEAN (1) NOT NULL );')
         console.log('all Tables checked');
 

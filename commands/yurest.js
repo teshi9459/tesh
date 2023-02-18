@@ -63,6 +63,7 @@ module.exports = {
                 .setDescription('search in Yurest')
                 .addStringOption(option => option.setName('text').setDescription('username, charname or text to search').setRequired(true))),
     async execute(interaction) {
+        // setup ausnehmen und funktion in db.js schreiben
         if (!interaction.member.roles.cache.has(db.getyurestRole(interaction.guildId)))
             return interaction.reply({ embeds: [dc.sEmbed('Rolle fehlt', 'Du hast nicht die benötigten Berechtigungen', 'Tesh-Bot', '0xaaeeff')] });
         switch (interaction.options.getSubcommand()) {
