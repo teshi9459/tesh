@@ -40,7 +40,7 @@ module.exports = {
         let row = new ActionRowBuilder().addComponents(dc.createButton('ticket.close.0', '✖ Close', 'Danger'));
         row.addComponents(dc.createButton('ticket.private.0', '🔒 Privat', 'Secondary', undefined, undefined, true)).addComponents(dc.createButton('ticket.public.0', '🔓 Öffentlich', 'Secondary'));
         i.guild.channels.create({
-            name: '🆕-' + pannel.name,
+            name: '🆕-' + i.user.username,
             type: ChannelType.GuildText,
             reason: 'neues Ticket',
             parent: pannel.category,
