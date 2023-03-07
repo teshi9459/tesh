@@ -7,7 +7,7 @@ Roleplaymanagment & Tool Bot by teshi9459
 | Modul               | Status | Info                                                                                                                  |
 | ------------------- | ------ | --------------------------------------------------------------------------------------------------------------------- |
 | [Words](#words)     | ✅     | Tool zum finden von Roleplayern die zu wenig Wörter pro Nachricht schreiben                                           |
-| [Tickets](#tickets) | ⚠      | Ticketsystem für die Abgabe von Charactern, Support anliegen oder Bewerbungen `Texte speichern aktuell eingeschränkt` |
+| [Tickets](#tickets) | ⚠      | Ticketsystem für die Abgabe von Charactern, Support anliegen oder Bewerbungen `Texte speichern aktuell eingeschränkt+ersteller kann Ticket nicht schließen` |
 | [Yurest](#yurest)   | 🔄     | Sozialmedia für Roleplay                                                                                              |
 
 ✅ - working ⚠ - bugs found ❌- not working 🔄 - in progress
