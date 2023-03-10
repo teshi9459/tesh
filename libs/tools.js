@@ -112,7 +112,7 @@ module.exports = {
    * @param {Array} arr - entsprechender Array.
    * @param {boolean} options - true für log.
    */
-  popA: function (arr, value) {
+  popA: function (arr, value, options) {
     for (let i = 0; i < arr.length; i++) {
       if (arr[i] == value) {
         arr.splice(i, 1);

@@ -19,8 +19,8 @@ module.exports = {
         db.exec('CREATE TABLE IF NOT EXISTS modules (name VARCHAR(100) NOT NULL,enabled BOOLEAN(1) NOT NULL,config TEXT NOT NULL,guild VARCHAR(18) NOT NULL);');
         db.exec('CREATE TABLE IF NOT EXISTS tickets ( id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, channel VARCHAR (18) NOT NULL, name VARCHAR (20) NOT NULL, user VARCHAR (18) NOT NULL, guild VARCHAR (18) NOT NULL, closed BOOLEAN NOT NULL DEFAULT (false), content TEXT );');
         db.exec('CREATE TABLE IF NOT EXISTS ticketp ( message VARCHAR (18) NOT NULL PRIMARY KEY, channel VARCHAR (18) NOT NULL, text TEXT NOT NULL, category VARCHAR (18) NOT NULL, name VARCHAR (20) );');
+        db.exec('CREATE TABLE IF NOT EXISTS tasks (guild VARCHAR(18) NOT NULL, id INTEGER NOT NULL, content TEXT NOT NULL, claims TEXT);');
         console.log('all Tables checked');
-
     },
 
     /**
@@ -435,4 +435,104 @@ module.exports = {
         const row = db.prepare('SELECT * FROM tickets WHERE channel = \'' + id + '\' AND guild = ' + guild).all();
         return !(row.length == 0);
     },
+
+    /**
+    * gibt Team Tasks zurück sortiert nach id
+    * @param {String} guild Guild Id
+    * @return {Object} Tasks
+    */
+    getTeamTasks: function (guild) {
+        const row = db.prepare(`SELECT * FROM tasks WHERE guild = ${guild} ORDER BY id`).all();
+        if (row === undefined) return [];
+        return row;
+    },
+
+    /**
+    * gibt Team Tasks Claims zurück
+    * @param {String} guild Guild Id
+    * @param {String} content Task Content
+    * @return {Array} Tasks Claims
+    */
+    getTeamTasksClaims: function (guild, content) {
+        const row = db.prepare(`SELECT * FROM tasks WHERE guild = ${guild} And content = '${content}'`).get();
+        try {
+            return JSON.parse(row.claims).data;
+        } catch (error) {
+            return [];
+        }
+    },
+
+    /**
+    * erstellt eine Task
+    * @param {String} content Task Text
+    * @param {String} guild Guild Id
+    */
+    insertTeamTask: function (content, guild) {
+        const id = this.getTeamTasks(guild).length + 1;
+        const claims = JSON.stringify({ data: [] });
+        const insert = db.prepare('INSERT INTO tasks (guild, id ,content,claims) VALUES ( @guild, @id, @content, @claims)');
+        const insertMany = db.transaction((tags) => {
+            for (const tag of tags)
+                insert.run(tag);
+        });
+        insertMany([
+            {
+                guild: guild,
+                id: id,
+                content: content,
+                claims: claims
+            }
+        ]);
+    },
+
+    /**
+    * löscht Tasks
+    * @param {String} content Content of task
+    * @param {String} channel Guild Id
+    */
+    deleteTeamTask: function (content, guild) {
+        const insert = db.prepare('DELETE FROM tasks WHERE guild = ' + guild + ' AND content = \'' + content + '\';');
+        const insertMany = db.transaction((modules) => {
+            for (const module of modules)
+                insert.run(module);
+        });
+        insertMany([{}]);
+    },
+
+    /**
+     * updated Task claims
+     * @param {String} task Task content
+     * @param {String} guild Guild Id
+     * @param {Array} claims Claims Array
+    */
+    updateTeamTaskClaims: function (task, guild, claims) {
+        claims = JSON.stringify({ data: claims });
+        const insert = db.prepare('UPDATE tasks set claims = @cont WHERE content = \'' + task + '\' AND guild = ' + guild);
+        const insertMany = db.transaction((modules) => {
+            for (const module of modules)
+                insert.run(module);
+        });
+        insertMany([{
+            cont: claims
+        }]);
+    },
+
+    /**
+    * updated Task id
+    * @param {String} task Task content
+    * @param {String} guild Guild Id
+    * @param {Integer} id Id of the task
+   */
+    updateTeamTaskId: function (task, guild, id) {
+        const insert = db.prepare('UPDATE tasks set id = @cont WHERE content = \'' + task + '\' AND guild = ' + guild);
+        const insertMany = db.transaction((modules) => {
+            for (const module of modules)
+                insert.run(module);
+        });
+        insertMany([{
+            cont: id
+        }]);
+    },
+
+
 };
