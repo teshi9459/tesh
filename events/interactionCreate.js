@@ -42,7 +42,6 @@ module.exports = {
         case 'ticket':
           ticketManager.gotButton(interaction, id[1], id[2]);
           break;
-
         default:
           interaction.deleteReply();
           break;
