@@ -4,11 +4,12 @@ Roleplaymanagment & Tool Bot by teshi9459
 
 ---
 
-| Modul               | Status | Info                                                                                                                  |
-| ------------------- | ------ | --------------------------------------------------------------------------------------------------------------------- |
-| [Words](#words)     | ✅     | Tool zum finden von Roleplayern die zu wenig Wörter pro Nachricht schreiben                                           |
+| Modul               | Status | Info                                                                                                                                                        |
+| ------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Words](#words)     | ✅     | Tool zum finden von Roleplayern die zu wenig Wörter pro Nachricht schreiben                                                                                 |
 | [Tickets](#tickets) | ⚠      | Ticketsystem für die Abgabe von Charactern, Support anliegen oder Bewerbungen `Texte speichern aktuell eingeschränkt+ersteller kann Ticket nicht schließen` |
-| [Yurest](#yurest)   | 🔄     | Sozialmedia für Roleplay                                                                                              |
+| [Yurest](#yurest)   | 🔄     | Sozialmedia für Roleplay                                                                                                                                    |
+| [tasks](#tasks)     | ✅     | Aufgaben fürs Team erstellen und zuordnen                                                                                                                   |
 
 ✅ - working ⚠ - bugs found ❌- not working 🔄 - in progress
 
@@ -39,16 +40,27 @@ Tesh stellt ein Ticket-System zur verfügung, welches durch Tickets durch Ticket
 
 ## How to Setup Tickets?
 
-- Führe `/words setup` aus gebe bei `channel` einen Channel an wo alle Ticket verläufe gespeichert werden sollen und bei `abnehmer` die Rolle die befugt ist Steckbriefe zu bearbeiten.
+- Führe `/ticket setup` aus und gebe bei `channel` einen Channel an wo alle Ticket verläufe gespeichert werden sollen und bei `abnehmer` die Rolle die befugt ist Steckbriefe zu bearbeiten.
 
-Pannel:
+**Pannel:**
 
 - erstelle ein Pannel mit `/ticket pannel` `type` `info` `category`
 
 1. `type` ▷ wähle eine der Kategorien, bei Support oder Bewerbung kann das Ticket öffentlich gemacht werden (für alle User sichtbar). Ansonsten ändern sich nur die Texte in der ersten Nachricht im Ticket.
-2. `info` der hier eingegebene Text ist dann im erstellten Pannel zu lesen.
-3. `category` Hier wähle die Channel-Kategorie in der neue Ticket-Channel erstellt werden sollen.
+2. `info` ▷ der hier eingegebene Text ist dann im erstellten Pannel zu lesen.
+3. `category` ▷ Hier wähle die Channel-Kategorie in der neue Ticket-Channel erstellt werden sollen.
 
 Und fertig ist das Pannel.
 
-Tickets:
+**Tickets:**
+
+- Tickets werden über den Button 'Ticket' am jeweiligen Pannel erstellt
+
+![new Ticket - Button](wiki/media/button_newticket.png)
+
+- im Ticket sind nun 3 weiter Buttons
+
+  ▷ CLOSE Button
+  dieser Button schließt das Ticket. Es wird ein Pannel gesendet welches 15min die möglichkeit gibt, das Ticket per Button 'open' wieder zu öffnen. Wenn in der Zeit nichts passiert, wird der Verlauf der Nachrichten im Ticket gesammelt und per txt Datei in den audgewählten Channel gesichert.
+
+  ▷

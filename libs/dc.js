@@ -12,7 +12,6 @@ module.exports = {
    */
   sEmbed: function (title, descript, footer, color) {
     return new EmbedBuilder()
-      .setColor(color)
       .setTitle(title)
       .setDescription(descript)
       .setFooter({
