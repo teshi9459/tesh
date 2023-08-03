@@ -6,8 +6,7 @@ module.exports = {
     .setName('ping')
     .setDescription('Replies with Pong!'),
   async execute(interaction) {
-    const rec = new Date() - interaction.createdTimestamp;
-    const text = "`" + rec + "ms` speed\n\n`" + interaction.client.ws.ping + "ms` ping\n\n`" + ms(interaction.client.uptime) + "` uptime"
+    const text = "`" + interaction.client.ws.ping + "ms` ping\n\n`" + ms(interaction.client.uptime) + "` uptime"
     const embed = dc.sEmbed('PONG      🏓', text, 'Tesh läuft auf deutschen Servern!', '0xaaeeff');
     await interaction.reply({
       embeds: [embed]

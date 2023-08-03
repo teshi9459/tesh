@@ -6,7 +6,7 @@ module.exports = {
     async execute(msg) {
         if (msg.content.startsWith('(') || msg.content.endsWith(')')) return;
         if (!db.checkChannel(msg.channel.parentId, msg.guildId)) return;
-        const l = this.count(msg.content)
+        const l = this.count(msg.content);
         const config = db.getModuleConfig(this.name, msg.guildId);
         if (l > config.min && l < config.max) {
             let reports = db.getWords(msg.author.id, msg.guildId);

@@ -1,15 +1,14 @@
 const db = require('../libs/db');
-
 module.exports = {
   name: 'ready',
   once: true,
   execute(client) {
-    const guilds = client.guilds.cache.map((guild) => guild.name);
-    console.log(`online as ${client.user.tag}\non ${guilds}`);
+    const guildCount = client.guilds.cache.size;
+    console.log(`online as ${client.user.tag}\non ${guildCount} Servern`);
     client.user.setPresence({
       activities: [
         {
-          name: 'auf ' + guilds.length + ' Servern',
+          name: `auf ${guildCount} Servern`,
         },
       ],
       status: 'online',
