@@ -24,6 +24,7 @@ module.exports = {
                 modul.execute(message);
             } catch (error) {
                 console.error(error);
+                db.logError('bot', 'msg create', error);
                 message.reply('Ein Fehler ist aufgetreten qwq\n*kontaktiere den Developer*');
             }
         }

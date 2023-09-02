@@ -31,6 +31,7 @@ module.exports = {
         await command.execute(interaction);
       } catch (error) {
         console.error(error);
+        db.logError('bot', 'itc create', error);
         // Handle the error appropriately (e.g., display a user-friendly error message)
       }
     } else if (interaction.isButton()) {

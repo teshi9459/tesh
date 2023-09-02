@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, roleMention } = require('discord.js');
-const { checkGuild, getGuildRole, insertGuild } = require('../libs/db');
+const { checkGuild, getGuildRole, insertGuild, logError } = require('../libs/db');
 const { sEmbed } = require('../libs/dc');
 
 module.exports = {
@@ -61,6 +61,7 @@ module.exports = {
       return interaction.reply({ embeds: [replyEmbed] });
     } catch (error) {
       console.error(error);
+      db.logError('bot', 'cmd setup', error);
       // Implementiere hier eine Fehlerbehandlungsroutine
     }
   },
