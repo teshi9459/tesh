@@ -4,7 +4,7 @@ module.exports = {
   once: true,
   execute(client) {
     const guildCount = client.guilds.cache.size;
-    console.log(`online as ${client.user.tag}\non ${guildCount} Servern`);
+    console.log(`online as ${client.user.tag}\nauf ${guildCount} Servern`);
     client.user.setPresence({
       activities: [
         {

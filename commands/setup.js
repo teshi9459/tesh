@@ -1,72 +1,67 @@
-const { SlashCommandBuilder } = require('discord.js');
-const db = require('../libs/db');
-const dc = require('../libs/dc');
-const { roleMention } = require('discord.js');
+const { SlashCommandBuilder, roleMention } = require('discord.js');
+const { checkGuild, getGuildRole, insertGuild } = require('../libs/db');
+const { sEmbed } = require('../libs/dc');
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('setup')
-    .setDescription('setup the Bot')
+    .setDescription('Richte den Bot ein')
     .addRoleOption((option) =>
       option
-        .setName('role')
+        .setName('rolle')
         .setDescription(
-          'Role whitch is requied for using administrativ bot commands (if not selected will create a role)'
+          'Die Rolle die benötigt wird um den Bot zu verwalten (wenn nichts ausgewählt, wird Rolle erstellt)'
         )
         .setRequired(false)
     ),
   async execute(interaction) {
-    let role = interaction.options.getRole('role');
-    if (db.checkGuild(interaction.guildId)) {
-      return interaction.reply({
-        embeds: [
-          dc.sEmbed(
-            'Server bereits registriert',
-            `Du kannst Tesh schon mit ${roleMention(
-              db.getGuildRole(interaction.guildId)
-            )} benutzen`,
-            interaction.guild.name,
-            '0xaaeeff'
-          ),
-        ],
-      });
-    }
-    if (role == undefined) {
-      interaction.guild.roles
-        .create({
+    try {
+      const role = interaction.options.getRole('role');
+      const guildId = interaction.guildId;
+      const guildName = interaction.guild.name;
+      const guildRegistered = await checkGuild(guildId);
+      let replyEmbed = sEmbed(
+        'Oops',
+        `Es ist ein Fehler aufgetreten :/`,
+        guildName,
+        '0xff0000'
+      );
+      if (guildRegistered) {
+        const guildRole = await getGuildRole(guildId);
+        replyEmbed = sEmbed(
+          'Server bereits registriert',
+          `Du kannst Tesh bereits mit ${roleMention(guildRole)} verwenden. \nOder besuche https://teshbot.de/`,
+          guildName,
+          '0xaaeeff'
+        );
+      }
+      if (role == undefined && !guildRegistered) {
+        const newRole = await interaction.guild.roles.create({
           name: 'Tesh-Commander',
           color: '#aaeeff',
           reason: 'Teamrolle für Tesh',
-        })
-        .then((newRole) => {
-          db.insertGuild(interaction.guildId, newRole.id);
-          return interaction.reply({
-            embeds: [
-              dc.sEmbed(
-                'Server bereit!',
-                `Der Server wurde mit der Rolle ${roleMention(
-                  newRole.id
-                )} registriert.`,
-                interaction.guild.name,
-                '0xaaeeff'
-              ),
-            ],
-          });
-        })
-        .catch(console.error);
-    } else {
-      db.insertGuild(interaction.guildId, role.id);
-      return interaction.reply({
-        embeds: [
-          dc.sEmbed(
-            'Server bereit!',
-            `Der Server wurde mit der Rolle ${roleMention(
-              role.id
-            )} registriert.`,
-            interaction.guild.name,
-            '0xaaeeff'
-          ),
-        ],
-      });
+        });
+        await insertGuild(guildId, newRole.id);
+        replyEmbed = sEmbed(
+          'Server ist bereit!',
+          `Der Server wurde mit der Rolle ${roleMention(newRole.id)} registriert.\nProbiere auch das Teshboard auf https://teshbot.de/ aus`,
+          guildName,
+          '0xaaeeff'
+        );
+      } else if (role != undefined && !guildRegistered) {
+        await insertGuild(guildId, role.id);
+        replyEmbed = sEmbed(
+          'Server ist bereit!',
+          `Der Server wurde mit der Rolle ${roleMention(role.id)} registriert.\nProbiere auch das Teshboard auf https://teshbot.de/ aus`,
+          guildName,
+          '0xaaeeff'
+        );
+      }
+
+      return interaction.reply({ embeds: [replyEmbed] });
+    } catch (error) {
+      console.error(error);
+      // Implementiere hier eine Fehlerbehandlungsroutine
     }
   },
 };

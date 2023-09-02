@@ -36,4 +36,15 @@ router.get('/ping', async (req, res) => {
         res.status(500).send('Serverfehler');
     }
 });
+router.get('/guilds', async (req, res) => {
+    guilds = [];
+    req.client.guilds.cache.forEach(guild => {
+        guilds.push(guild);
+    });
+    res.send(guilds);
+});
+router.get('/modules', async (req, res) => {
+    console.log(req.query.guildId + "-" + req.query.userId);
+    res.send([["Modul 1", "Modul 2", "Modul 3"], ["Modul 4", "Modul 5", "Modul 6"]]);
+});
 module.exports = router;

@@ -1,26 +1,71 @@
-const fs = require('fs');
-const tools = require('./tools');
-const db = require('better-sqlite3')('database.sqlite');
+const mysql = require('mysql');
+const dotenv = require('dotenv');
+
+dotenv.config();
+const pool = mysql.createPool({
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: 3306
+});
+
+const executeQuery = (query, values) => {
+    return new Promise((resolve, reject) => {
+        pool.query(query, values, (error, results) => {
+            if (error) {
+                reject(error);
+            } else {
+                resolve(results);
+            }
+        });
+    });
+};
+
 module.exports = {
     /**
-     * erstellt DB verbindung
-     * @return {sql.Database} connected DB
+     * logt Benutztungen
      */
-    connectDb: function () {
-        return db;
+    logUse: function (app, content) {
+        executeQuery('INSERT INTO LogUse (app, content) VALUES (?, ?)', [app, content]);
+    },
+    /**
+     * logt Fehler
+     */
+    logError: function (app, category, error) {
+        executeQuery('INSERT INTO LogError (app, category, error) VALUES (?, ?, ?)', [app, category, error]);
+    },
+    /**
+     * checkt die db verbindung
+     */
+    setupCheck: function () {
+        pool.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
+            if (error) throw error;
+            console.log('Database connection successful!');
+        });
     },
 
     /**
-     * checkt ob alle Tabellen exsitieren
+    * sucht ob der User bereits registriert ist
+    * @param {String} id User Id
+    * @return {boolean} if exsist
+    */
+    checkUser: async function (id) {
+        try {
+            const results = await executeQuery('SELECT * FROM User WHERE id = ?', [id]);
+            return results.length > 0; // true, wenn Datensätze vorhanden, sonst false
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
+
+    /**
+     * erstellt User in Db
+     * @param {String} id User Id
      */
-    setupCheck: function () {
-        db.exec('CREATE TABLE IF NOT EXISTS guilds (id VARCHAR(18) PRIMARY KEY, role VARCHAR(18));');
-        db.exec('CREATE TABLE IF NOT EXISTS channels (id VARCHAR(255) NOT NULL PRIMARY KEY,guild VARCHAR(255) NOT NULL,type  VARCHAR(255) NOT NULL); ');
-        db.exec('CREATE TABLE IF NOT EXISTS modules (name VARCHAR(100) NOT NULL,enabled BOOLEAN(1) NOT NULL,config TEXT NOT NULL,guild VARCHAR(18) NOT NULL);');
-        db.exec('CREATE TABLE IF NOT EXISTS tickets ( id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, channel VARCHAR (18) NOT NULL, name VARCHAR (20) NOT NULL, user VARCHAR (18) NOT NULL, guild VARCHAR (18) NOT NULL, closed BOOLEAN NOT NULL DEFAULT (false), content TEXT );');
-        db.exec('CREATE TABLE IF NOT EXISTS ticketp ( message VARCHAR (18) NOT NULL PRIMARY KEY, channel VARCHAR (18) NOT NULL, text TEXT NOT NULL, category VARCHAR (18) NOT NULL, name VARCHAR (20) );');
-        db.exec('CREATE TABLE IF NOT EXISTS tasks (guild VARCHAR(18) NOT NULL, id INTEGER NOT NULL, content TEXT NOT NULL, claims TEXT);');
-        console.log('all Tables checked');
+    insertUser: function (id) {
+        executeQuery('INSERT INTO User (id) VALUES(?)', [id]);
     },
 
     /**
@@ -28,9 +73,14 @@ module.exports = {
      * @param {String} id Guild ID
      * @return {boolean} if exsist
      */
-    checkGuild: function (id) {
-        const row = db.prepare('SELECT * FROM guilds WHERE id = ' + id).all();
-        return !(row.length == 0);
+    checkGuild: async function (id) {
+        try {
+            const results = await executeQuery('SELECT * FROM Guild WHERE id = ?', [id]);
+            return results.length > 0; // true, wenn Datensätze vorhanden, sonst false
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
     },
 
     /**
@@ -39,15 +89,7 @@ module.exports = {
      * @param {String} roleid Commander Role Id
      */
     insertGuild: function (id, roleId) {
-        const insert = db.prepare('INSERT INTO guilds (id, role) VALUES (@id, @role)');
-        const insertMany = db.transaction((guilds) => {
-            for (const guild of guilds)
-                insert.run(guild);
-        });
-        insertMany([{
-            id: id,
-            role: roleId
-        }]);
+        executeQuery('INSERT INTO Guild (id, teshrole) VALUES (?, ?)', [id, roleId]);
     },
 
     /**
@@ -55,70 +97,16 @@ module.exports = {
      * @param {String} id Guild Id
      * @return {String} Commander Rollen Id
      */
-    getGuildRole: function (id) {
-        const row = db.prepare('SELECT * FROM guilds WHERE id = ' + id).get();
-        return row.role;
-    },
-
-    /**
-    * sucht ob das Module bereits registriert ist
-    * @param {String} id Modul Id
-    * @param {String} guild Guild Id
-    * @return {boolean} if exsist
-    */
-    checkModule: function (id, guild) {
-        const row = db.prepare('SELECT * FROM modules WHERE name = \'' + id + '\' AND guild = ' + guild).all();
-        return !(row.length == 0);
-    },
-
-    /**
-    * sucht ob das Module angeschaltet ist
-    * @param {String} id Modul Id
-    * @param {String} guild Guild Id
-    * @return {boolean} if on
-    */
-    isModuleOn: function (id, guild) {
-        const row = db.prepare('SELECT enabled FROM modules WHERE name = \'' + id + '\' AND guild = ' + guild).get();
-        if (row === undefined)
-            return false;
-        else
-            return row.enabled;
-    },
-
-    /**
-   * erstellt Module in DB
-   * @param {String} id Module Id
-   * @param {Boolean} enabled toggle
-   * @param {String} guild Guild Id
-   * @param {Object} settings Module Settings
-   */
-    insertModule: function (id, enabled, guild, settings) {
-        const insert = db.prepare('INSERT INTO modules (name, enabled, config, guild) VALUES (@id, @enabled, @config, @guildid)');
-        const insertMany = db.transaction((tags) => {
-            for (const tag of tags)
-                insert.run(tag);
-        });
-        insertMany([
-            {
-                id: id,
-                enabled: '' + enabled,
-                config: JSON.stringify(settings),
-                guildid: guild
-
-            }
-        ]);
-    },
-
-    /**
-     * gibt Commander Rollen Id zurück
-     * @param {String} id Module Id
-     * @param {String} guild Guild Id
-     * @return {Object} configurations
-     */
-    getModuleConfig: function (id, guild) {
-        const row = db.prepare('SELECT * FROM modules WHERE name = \'' + id + '\' AND guild = ' + guild).get();
+    getGuildRole: async function (id) {
         try {
-            return JSON.parse(row.config);
+            const query = 'SELECT teshrole FROM Guild WHERE id = ?';
+            const values = [id];
+            const results = await executeQuery(query, values);
+            if (results.length > 0) {
+                return results[0].teshrole;
+            } else {
+                return undefined;
+            }
         } catch (error) {
             console.error(error);
             return undefined;
@@ -126,112 +114,142 @@ module.exports = {
     },
 
     /**
-     * gibt Commander Rollen Id zurück
-     * @param {String} id Module Id
-     * @param {String} guild Guild Id
-     * @return {Boolean} Status des Modules
-     */
-    getModuleStatus: function (id, guild) {
-        const row = db.prepare(`SELECT enabled FROM guilds WHERE name = ${id} AND guild = ${guild}`).get();
-        return row.enabled;
-    },
-
-    /**
-     * updated das Modul auf aus oder an (kaput)
-     * @param {String} id Module Id
-     * @param {String} guild Guild Id
-     * @return {Boolean} Status des Modules
-     */
-    updateModuleStatus: function (id, guild, status) {
-        const insert = db.prepare('UPDATE modules set enabled = @status WHERE name = \'' + id + '\' AND guild = ' + guild);
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{
-            status: '' + status
-        }]);
-    },
-
-    /**
-     * updated die Modul Einstellungen
-     * @param {String} id Module Id
-     * @param {String} guild Guild Id
-     * @param {Object} configText Objekt von Einstellungen
-     */
-    updateModuleConfig: function (id, guild, configText) {
-        const insert = db.prepare('UPDATE modules set config = @status WHERE name = \'' + id + '\' AND guild = ' + guild);
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{
-            status: JSON.stringify(configText)
-        }]);
-    },
-
-    /**
-   * sucht ob der User bereits registriert ist
-   * @param {String} id User Id
-   * @param {String} guild Guild Id
-   * @return {boolean} if exsist
-   */
-    checkWords: function (id, guild) {
-        const row = db.prepare('SELECT * FROM words WHERE user = \'' + id + '\' AND guild = ' + guild).all();
-        return !(row.length == 0);
-    },
-
-    /**
-  * erstellt User für Words
-  * @param {String} id User Id
+  * sucht ob der Server regsitriert ist im Modul
   * @param {String} guild Guild Id
+  * @return {boolean} if exsist 
   */
-    insertWords: function (id, guild, reports) {
-        const insert = db.prepare('INSERT INTO words (user, guild, reports) VALUES (@id, @guildid, @reps)');
-        const insertMany = db.transaction((tags) => {
-            for (const tag of tags)
-                insert.run(tag);
-        });
-        insertMany([
-            {
-                id: id,
-                guildid: guild,
-                reps: JSON.stringify({ data: reports })
-
-            }
-        ]);
-    },
-
-    /**
-     * gibt Words Reports zurück
-     * @param {String} id Module Id
-     * @param {String} guild Guild Id
-     * @return {Array} Reports
-     */
-    getWords: function (id, guild) {
-        const row = db.prepare('SELECT * FROM words WHERE user = \'' + id + '\' AND guild = ' + guild).get();
+    checkWordsSetup: async function (guild) {
         try {
-            return JSON.parse(row.reports).data;
+            const results = await executeQuery('SELECT * FROM Words WHERE guild = ?', [guild]);
+            return results.length > 0; // true, wenn Datensätze vorhanden, sonst false
         } catch (error) {
-            return [];
+            console.error(error);
+            return false;
         }
     },
 
     /**
-     * updated die Words reports
-     * @param {String} id User Id
-     * @param {String} guild Guild Id
-     * @param {Array} reports Reports Object
-     */
-    updateWords: function (id, guild, reports) {
-        const insert = db.prepare('UPDATE words set reports = @reps WHERE user = \'' + id + '\' AND guild = ' + guild);
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{
-            reps: JSON.stringify({ data: reports })
-        }]);
+  * sucht ob Words aktiviert ist
+  * @param {String} guild Guild Id
+  * @return {boolean} if on 
+  */
+    checkWordsToggle: async function (guild) {
+        try {
+            const results = await executeQuery('SELECT toggle FROM Words WHERE guild = ?', [guild]);
+            if (results.length == 0) return false;
+            return results[0].toggle;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
+
+    /**
+    * erstellt ServerCOnfig in Words
+    * @param {String} guild Guild Id
+    * @param {String} channel logchannel Id
+    */
+    insertWordsConfig: function (guild, channel) {
+        executeQuery('INSERT INTO Words (guild, channel) VALUES (?, ?)', [guild, channel]);
+    },
+
+    /**
+    * updatet Schalter für Words
+    * @param {String} guild Guild Id
+    * @param {String} status toggle
+    */
+    updateWordsToggle: function (guild, status) {
+        executeQuery('UPDATE Words SET toggle = ? WHERE guild = ?;', [status, guild]);
+    },
+
+    /**
+    * updatet Channel für Words
+    * @param {String} guild Guild Id
+    * @param {String} mchannel CHannel Id 
+    */
+    updateWordsChannel: function (guild, channel) {
+        executeQuery('UPDATE Words SET channel = ? WHERE guild = ?;', [channel, guild]);
+    },
+
+    /**
+  * updatet warning für Words
+  * @param {String} guild Guild Id
+  * @param {String} status toggle
+  */
+    updateWordsWarning: function (guild, status) {
+        executeQuery('UPDATE Words SET warning = ? WHERE guild = ?;', [status, guild]);
+    },
+
+
+    /**
+   * updatet min, max für Words
+   * @param {String} guild Guild Id
+   * @param {String} min min words
+   * @param {String} max max words
+   */
+    updateWordsTrigger: function (guild, min, max) {
+        executeQuery('UPDATE Words SET min = ? , max = ? WHERE guild = ?;', [min, max, guild]);
+    },
+
+    /**
+    * gibt Words config zurück
+    * @param {String} guild Guild Id
+    * @return {Object} Config OBJ
+    */
+    getWordsConfig: async function (guild) {
+        try {
+            const results = await executeQuery('SELECT * FROM Words WHERE guild = ?', [guild]);
+            if (results.length > 0) {
+                return results[0];
+            } else {
+                return undefined;
+            }
+        } catch (error) {
+            console.error(error);
+            return undefined;
+        }
+    },
+
+    /**
+    * erstellt einen Report
+    * @param {String} guild Guild Id
+    * @param {String} user user Id
+    * @param {String} reason reason
+    * @param {String} content the Report
+    * @param {String} json the Report JSON
+    * @param {Integer} level report Level
+    */
+    insertReport: function (guild, user, reason, content, json, level) {
+        executeQuery('INSERT INTO Report (guild, user, reason, content, json, level) VALUES (?, ?, ?, ?, ?, ?)', [guild, user, reason, content, json, level]);
+    },
+
+    /**
+  * erstellt einen Report
+  * @param {String} guild Guild Id
+  * @param {String} user user Id
+  * @param {String} reason reason
+  * @param {String} content the Report
+  * @param {String} json the Report JSON
+  */
+    insertReport: function (guild, user, reason, content, json) {
+        executeQuery('INSERT INTO Report (guild, user, reason, content, json) VALUES (?, ?, ?, ?, ?)', [guild, user, reason, content, json]);
+    },
+
+
+    /**
+    * gibt Anzahl an reports zurück und stärke
+    * @param {String} guild Guild Id
+    * @param {String} user user Id
+    * @return {Array} [reports, level]
+    */
+    countActiveReports: async function (guild, user) {
+        try {
+            const results = await executeQuery('SELECT level FROM Report WHERE guild = ? AND user = ? AND archived = false;', [guild, user]);
+            return results;
+        } catch (error) {
+            console.error(error);
+            return undefined;
+        }
     },
 
     /**
@@ -240,29 +258,24 @@ module.exports = {
     * @param { String } guild Guild Id
     * @return { boolean } if exsist
     */
-    checkChannel: function (id, guild) {
-        const row = db.prepare('SELECT * FROM channels WHERE id = \'' + id + '\' AND guild = ' + guild).all();
-        return !(row.length == 0);
+    checkChannel: async function (id, guild) {
+        try {
+            const results = await executeQuery('SELECT * FROM Channel WHERE id = ? AND guild = ?', [id, guild]);
+            return results.length > 0; // true, wenn Datensätze vorhanden, sonst false
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
     },
 
     /**
-    * erstellt neuen Cahnnel
+    * erstellt neuen Channel
     * @param {String} id Channel Id
+    * @param {String} type varchar 3 type
     * @param {String} guild Guild Id
     */
-    insertChannel: function (id, guild) {
-        const insert = db.prepare('INSERT INTO channels (id, guild, type) VALUES (@id, @guildid, @typ)');
-        const insertMany = db.transaction((tags) => {
-            for (const tag of tags)
-                insert.run(tag);
-        });
-        insertMany([
-            {
-                id: id,
-                guildid: guild,
-                typ: 'rpCat'
-            }
-        ]);
+    insertChannel: function (id, type, guild) {
+        executeQuery('INSERT INTO Channel (id, type, guild) VALUES (?, ?, ?)', [id, type, guild]);
     },
 
     /**
@@ -270,8 +283,18 @@ module.exports = {
      * @param {String} guild Guild Id
      * @return {Array} channel
      */
-    getChannel: function (guild) {
-        return db.prepare('SELECT * FROM channels WHERE guild = ' + guild).all();
+    getChannel: async function (guild) {
+        try {
+            const results = await executeQuery('SELECT id FROM Channel WHERE guild = ?', [guild]);
+            if (results.length > 0) {
+                return results;
+            } else {
+                return [];
+            }
+        } catch (error) {
+            console.error(error);
+            return [];
+        }
     },
 
     /**
@@ -280,86 +303,80 @@ module.exports = {
      * @param {String} guild Guild Id
      */
     deleteChannel: function (id, guild) {
-        const insert = db.prepare('DELETE FROM channels WHERE id = \'' + id + '\' AND guild = ' + guild);
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{}]);
+        executeQuery('DELETE FROM Channel WHERE id = ? AND guild = ?', [id, guild]);
     },
 
     /**
-  * erstellt ein Ticketpannel
-  * @param {String} message Message Id (Pannel)
-  * @param {String} channel Channel Id
-  * @param {String} text text for new tickets
-  * @param {String} name type of tickets
-  * @param {String} categorie category for new tickets
-  */
-    insertPannel: function (message, channel, text, name, category) {
-        const insert = db.prepare('INSERT INTO ticketp (message, channel, text, name, category) VALUES (@message, @channel, @text, @name, @category)');
-        const insertMany = db.transaction((tags) => {
-            for (const tag of tags)
-                insert.run(tag);
-        });
-        insertMany([
-            {
-                message: message,
-                channel: channel,
-                text: text,
-                name: name,
-                category: category
-            }
-        ]);
-    },
-
-    /**
-    * löscht Ticket Pannels
-    * @param {String} id Ticket Id
+    * erstellt ein Ticketpannel
+    * @param {String} message Message Id (Pannel)
     * @param {String} channel Channel Id
+    * @param {String} text text for new tickets
+    * @param {String} category category for new tickets
+    * @param {String} log log channel
     */
-    deletePannel: function (id, channel) {
-        const insert = db.prepare('DELETE FROM ticketp WHERE message = \'' + id + '\' AND channel = ' + channel);
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{}]);
+    insertTicketPanel: function (message, channel, guild, text, category, log) {
+        executeQuery('INSERT INTO Ticketp (message, channel, guild, category, text, log) VALUES (?, ?, ?, ?, ?, ?)', [message, channel, guild, category, text, log]);
+    },
+
+    /**
+    * löscht Ticket Panels
+    * @param {String} id TicketPanel Id
+    * @param {String} guild Guild Id
+    */
+    deleteTicketPanel: function (id, guild) {
+        executeQuery('DELETE FROM Ticketp WHERE message = ? AND guild = ?', [id, guild]);
     },
 
     /**
      * gibt Ticket Pannel zurück
-     * @param {String} id Module Id
-     * @return {Object} Pannel
+     * @param {String} id Message ID
+     * @param {String} guild Guild Id
+     * @return {Object} result Object with category and text
      */
-    getPannel: function (id) {
-        const row = db.prepare(`SELECT * FROM ticketp WHERE message = ${id}`).get();
-        return row;
+    getTicketPanel: async function (id, guild) {
+        try {
+            const results = await executeQuery('SELECT category, text, log FROM Ticketp WHERE message = ? AND guild = ?', [id, guild]);
+            if (results.length > 0) {
+                return results[0];
+            } else {
+                return undefined;
+            }
+        } catch (error) {
+            console.error(error);
+            return undefined;
+        }
     },
 
     /**
- * erstellt ein Ticket
- * @param {String} channel Channel Id
- * @param {String} name type of ticket
- * @param {String} user User Id
- * @param {String} guild Guild Id
- */
-    insertTicket: function (channel, name, user, guild) {
-        const content = JSON.stringify({ data: [] });
-        const insert = db.prepare('INSERT INTO tickets (channel, name, user, guild, content) VALUES ( @channel, @name, @user, @guild, @content)');
-        const insertMany = db.transaction((tags) => {
-            for (const tag of tags)
-                insert.run(tag);
-        });
-        insertMany([
-            {
-                channel: channel,
-                name: name,
-                user: user,
-                guild: guild,
-                content: content
+    * gibt Ticket Log Channel zurück
+    * @param {String} channel Channel Id
+    * @param {String} guild Guild Id
+    * @return {Strin} Channel Id for logging
+    */
+    getTicketLog: async function (channel, guild) {
+        try {
+            const results = await executeQuery('SELECT log FROM Ticket WHERE guild = ? AND channel = ? AND closed = false;', [guild, channel]);
+            if (results.length > 0) {
+                return results[0].log;
+            } else {
+                return undefined;
             }
-        ]);
+        } catch (error) {
+            console.error(error);
+            return undefined;
+        }
+    },
+
+    /**
+    * erstellt ein Ticket
+    * @param {String} channel Channel Id
+    * @param {String} user User Id
+    * @param {String} guild Guild Id
+    * @param {String} log Log-Channel Id
+    */
+    insertTicket: function (channel, user, guild, log) {
+        const content = JSON.stringify({ messages: [] });
+        executeQuery('INSERT INTO Ticket (user, channel, guild, content, log) VALUES (?,?,?,?,?)', [user, channel, guild, content, log]);
     },
 
     /**
@@ -368,171 +385,109 @@ module.exports = {
      * @param {String} guild Guild Id
      * @return {Integer} Id
      */
-    getTicketId: function (channel, guild) {
-        const row = db.prepare(`SELECT * FROM tickets WHERE channel = ${channel} AND guild = ${guild}`).get();
-        return row.id;
-    },
-
-    /**
-     * gibt Ticket zurück
-     * @param {String} id channel Id
-     * @param {String} guild Guild Id
-     * @return {Object} Ticket
-   */
-    getTicket: function (id, guild) {
-        const row = db.prepare(`SELECT * FROM tickets WHERE channel = ${id} AND guild = ${guild}`).get();
-        return row;
-    },
-
-    /**
-     * gibt Ticket Content zurück
-     * @param {String} id channel Id
-     * @param {String} guild Guild Id
-     * @return {Object} Data Object
-   */
-    getTicketContent: function (id, guild) {
-        const row = db.prepare(`SELECT * FROM tickets WHERE channel = ${id} AND guild = ${guild}`).get();
-        return JSON.parse(row.content);
-    },
-
-    /**
-     * updated Ticket content
-     * @param {String} id Ticket Id
-     * @param {String} guild Guild Id
-     * @param {Object} content Object of Content
-    */
-    updateTicketContent: function (id, guild, content) {
-        const insert = db.prepare('UPDATE tickets set content = @cont WHERE channel = ' + id + ' AND guild = ' + guild);
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{
-            cont: JSON.stringify(content)
-        }]);
-    },
-
-    /**
-     * schließt ein Ticket
-     * @param {String} id Ticket Id
-    */
-    closeTicket: function (id) {
-        const insert = db.prepare('UPDATE tickets set closed = true WHERE id = ' + id);
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{}]);
-    },
-
-    /**
-    * sucht ob der Ticket Channel eingetragen ist
-    * @param { String } id Channel Id
-    * @param { String } guild Guild Id
-    * @return { boolean } if exsist
-    */
-    checkTicketChannel: function (id, guild) {
-        const row = db.prepare('SELECT * FROM tickets WHERE channel = \'' + id + '\' AND guild = ' + guild).all();
-        return !(row.length == 0);
-    },
-
-    /**
-    * gibt Team Tasks zurück sortiert nach id
-    * @param {String} guild Guild Id
-    * @return {Object} Tasks
-    */
-    getTeamTasks: function (guild) {
-        const row = db.prepare(`SELECT * FROM tasks WHERE guild = ${guild} ORDER BY id`).all();
-        if (row === undefined) return [];
-        return row;
-    },
-
-    /**
-    * gibt Team Tasks Claims zurück
-    * @param {String} guild Guild Id
-    * @param {String} content Task Content
-    * @return {Array} Tasks Claims
-    */
-    getTeamTasksClaims: function (guild, content) {
-        const row = db.prepare(`SELECT * FROM tasks WHERE guild = ${guild} And content = '${content}'`).get();
+    getTicketId: async function (channel, guild) {
         try {
-            return JSON.parse(row.claims).data;
+            const results = await executeQuery('SELECT id FROM Ticket WHERE guild = ? AND channel = ? AND closed = false;', [guild, channel]);
+            return results[0].id;
         } catch (error) {
-            return [];
+            console.error(error);
+            return undefined;
         }
     },
 
     /**
-    * erstellt eine Task
-    * @param {String} content Task Text
-    * @param {String} guild Guild Id
-    */
-    insertTeamTask: function (content, guild) {
-        const id = this.getTeamTasks(guild).length + 1;
-        const claims = JSON.stringify({ data: [] });
-        const insert = db.prepare('INSERT INTO tasks (guild, id ,content,claims) VALUES ( @guild, @id, @content, @claims)');
-        const insertMany = db.transaction((tags) => {
-            for (const tag of tags)
-                insert.run(tag);
-        });
-        insertMany([
-            {
-                guild: guild,
-                id: id,
-                content: content,
-                claims: claims
-            }
-        ]);
-    },
-
-    /**
-    * löscht Tasks
-    * @param {String} content Content of task
-    * @param {String} channel Guild Id
-    */
-    deleteTeamTask: function (content, guild) {
-        const insert = db.prepare('DELETE FROM tasks WHERE guild = ' + guild + ' AND content = \'' + content + '\';');
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{}]);
-    },
-
-    /**
-     * updated Task claims
-     * @param {String} task Task content
+     * gibt Ticket zurück
+     * @param {String} channel channel Id
      * @param {String} guild Guild Id
-     * @param {Array} claims Claims Array
+     * @return {Object} Ticket
     */
-    updateTeamTaskClaims: function (task, guild, claims) {
-        claims = JSON.stringify({ data: claims });
-        const insert = db.prepare('UPDATE tasks set claims = @cont WHERE content = \'' + task + '\' AND guild = ' + guild);
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{
-            cont: claims
-        }]);
+    getTicket: async function (channel, guild) {
+        try {
+            const results = await executeQuery('SELECT * FROM Ticket WHERE guild = ? AND channel = ?;', [guild, channel]);
+            return results[0];
+        } catch (error) {
+            console.error(error);
+            return undefined;
+        }
     },
 
     /**
-    * updated Task id
-    * @param {String} task Task content
-    * @param {String} guild Guild Id
-    * @param {Integer} id Id of the task
-   */
-    updateTeamTaskId: function (task, guild, id) {
-        const insert = db.prepare('UPDATE tasks set id = @cont WHERE content = \'' + task + '\' AND guild = ' + guild);
-        const insertMany = db.transaction((modules) => {
-            for (const module of modules)
-                insert.run(module);
-        });
-        insertMany([{
-            cont: id
-        }]);
+ * gibt Ticket USer id zurück
+ * @param {String} channel channel Id
+ * @param {String} guild Guild Id
+ * @return {Object} Ticket
+*/
+    getTicketUser: async function (channel, guild) {
+        try {
+            const results = await executeQuery('SELECT user FROM Ticket WHERE channel = ? AND guild = ?', [channel, guild]);
+            if (results.length > 0) {
+                return results[0].user;
+            } else {
+                return undefined;
+            }
+        } catch (error) {
+            console.error(error);
+            return undefined;
+        }
     },
 
+    /**
+     * gibt Ticket Content zurück
+     * @param {String} channel channel Id
+     * @param {String} guild Guild Id
+     * @return {Object} Data Object
+    */
+    getTicketContent: async function (channel, guild) {
+        try {
+            const results = await executeQuery('SELECT content FROM Ticket WHERE channel = ? AND guild = ?', [channel, guild]);
+            if (results.length > 0) {
+                return results[0].content;
+            } else {
+                return undefined;
+            }
+        } catch (error) {
+            console.error(error);
+            return undefined;
+        }
+    },
 
+    /**
+     * updated Ticket content
+     * @param {String} channel Channel Id
+     * @param {String} guild Guild Id
+     * @param {Object} content Object of Content
+    */
+    updateTicketContent: function (channel, guild, content) {
+        content = JSON.stringify(content);
+        executeQuery('UPDATE Ticket SET content = ? WHERE channel = ? AND guild = ?', [content, channel, guild]);
+    },
+
+    /**
+     * schließt ticket
+     * @param {String} channel Channel Id
+     * @param {String} guild Guild Id
+    */
+    closeTicket: function (channel, guild) {
+        executeQuery('UPDATE Ticket SET closed = true WHERE channel = ? AND guild = ?', [channel, guild]);
+    },
+
+    /**
+    * sucht ob der Ticket Channel eingetragen ist
+    * @param { String } channel Channel Id
+    * @param { String } guild Guild Id
+    * @return { boolean } if exsist
+    */
+    checkTicketChannel: async function (channel, guild) {
+        try {
+            const results = await executeQuery('SELECT * FROM Ticket WHERE channel = ? AND guild = ?', [channel, guild]);
+            if (results.length > 0) {
+                return true;
+            } else {
+                return false;
+            }
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    },
 };

@@ -74,45 +74,38 @@ module.exports = {
 
     ,
     async execute(interaction) {
-        let configs;
-        if (!interaction.member.roles.cache.has(db.getGuildRole(interaction.guildId)))
+        if (!interaction.member.roles.cache.has(await db.getGuildRole(interaction.guildId)))
             return interaction.reply({ embeds: [dc.sEmbed('Rolle fehlt', 'Du hast nicht die benötigten Berechtigungen', 'Tesh-Bot', '0xaaeeff')] });
-        if (db.checkModule('words', interaction.guildId) && interaction.options.getSubcommand() == 'setup')
+        const check = await db.checkWordsSetup(interaction.guildId);
+        if (check && interaction.options.getSubcommand() == 'setup')
             return interaction.reply({ embeds: [dc.sEmbed('Words ist bereits aktiv', 'Um das Module zu ändern schaue nach anderen Commands', interaction.guild.name, '0xaaeeff')] });
-        if (!db.checkModule('words', interaction.guildId) && !interaction.options.getSubcommand() == 'setup')
+        if (!check && !interaction.options.getSubcommand() == 'setup')
             return interaction.reply({ embeds: [dc.sEmbed('Words muss erst erstellt werden', 'bitte benutze `/words setup` um zu starten', interaction.guild.name, '0xaaeeff')] });
         switch (interaction.options.getSubcommand()) {
             case 'setup':
-                db.insertModule('words', false, interaction.guildId, { min: 2, max: 10, channel: interaction.options.getChannel('channel').id, warning: false });
+                await db.insertWordsConfig(interaction.guildId, interaction.options.getChannel('channel').id);
                 await interaction.reply({ embeds: [dc.sEmbed('Words ist nun bereit', 'Aktiviere das Modul nun mit `/words toggle true `', interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'toggle':
                 let stats = 'deaktiviert';
                 if (interaction.options.getBoolean('toggle'))
                     stats = 'aktiviert'
-                db.updateModuleStatus('words', interaction.guildId, interaction.options.getBoolean('toggle'));
+                await db.updateWordsToggle(interaction.guildId, interaction.options.getBoolean('toggle'));
                 await interaction.reply({ embeds: [dc.sEmbed('Words', 'Das Modul wurde ' + stats, interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'trigger':
-                configs = db.getModuleConfig('words', interaction.guildId);
-                configs.min = interaction.options.getInteger('min');
-                configs.max = interaction.options.getInteger('max');
-                db.updateModuleConfig('words', interaction.guildId, configs);
-                await interaction.reply({ embeds: [dc.sEmbed('Words', `Die Einstellungen wurden auf min: ${configs.min} max: ${configs.max} geändert`, interaction.guild.name, '0xaaeeff')] });
+                await db.updateWordsTrigger(interaction.guildId, interaction.options.getInteger('min'), interaction.options.getInteger('max'));
+                await interaction.reply({ embeds: [dc.sEmbed('Words', `Die Einstellungen wurden auf min: ${interaction.options.getInteger('min')} max: ${interaction.options.getInteger('max')} geändert`, interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'channel':
-                configs = db.getModuleConfig('words', interaction.guildId);
-                configs.channel = interaction.options.getChannel('channel').id;
-                db.updateModuleConfig('words', interaction.guildId, configs);
-                await interaction.reply({ embeds: [dc.sEmbed('Words', `Der Channel wurde auf ${channelMention(configs.channel)} geändert`, interaction.guild.name, '0xaaeeff')] });
+                await db.updateWordsChannel(interaction.guildId, interaction.options.getChannel('channel').id);
+                await interaction.reply({ embeds: [dc.sEmbed('Words', `Der Channel wurde auf ${interaction.options.getChannel('channel')} geändert`, interaction.guild.name, '0xaaeeff')] });
                 break;
             case 'warning':
                 let stats2 = 'deaktiviert';
                 if (interaction.options.getBoolean('toggle'))
-                    stats2 = 'aktiviert'
-                configs = db.getModuleConfig('words', interaction.guildId);
-                configs.warning = interaction.options.getBoolean('toggle');
-                db.updateModuleConfig('words', interaction.guildId, configs);
+                    stats2 = 'aktiviert';
+                await db.updateWordsWarning(interaction.guildId, interaction.options.getBoolean('toggle'));
                 await interaction.reply({ embeds: [dc.sEmbed('Words', 'Warnungen sind nun ' + stats2, interaction.guild.name, '0xaaeeff')] });
                 break;
             default:

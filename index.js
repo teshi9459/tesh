@@ -4,6 +4,7 @@ const { Client, GatewayIntentBits } = require('discord.js');
 const dotenv = require('dotenv');
 const express = require('express');
 const routes = require('./api/routes');
+const cors = require('cors');
 
 dotenv.config();
 const client = new Client({
@@ -43,6 +44,7 @@ async function login() {
   }
 }
 const app = express();
+app.use(cors());
 app.use('/api', clientMiddleware, routes);
 app.listen(9459, () => {
   console.log('Server listening on port http://localhost:9459');

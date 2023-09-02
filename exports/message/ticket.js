@@ -1,42 +1,42 @@
 const db = require('../../libs/db');
 const dc = require('../../libs/dc');
-const { channelMention, AttachmentBuilder, ActionRowBuilder, ChannelType, PermissionsBitField, userMention } = require('discord.js');
+const { channelMention, AttachmentBuilder, ActionRowBuilder, ChannelType, PermissionsBitField, userMention, codeBlock, bold } = require('discord.js');
 const interactionCreate = require('../../events/interactionCreate');
 module.exports = {
     name: 'ticket',
     async execute(msg) {
-        if (!db.checkTicketChannel(msg.channel.id, msg.guildId)) return;
-        const content = db.getTicketContent(msg.channel.id, msg.guildId);
-        content.data.push(msg.id);
+        if (!await db.checkTicketChannel(msg.channel.id, msg.guildId)) return;
+        const content = JSON.parse(await db.getTicketContent(msg.channel.id, msg.guildId));
+        content.messages.push(msg.id);
         db.updateTicketContent(msg.channel.id, msg.guildId, content);
     },
-    gotButton: function (i, action, id) {
+    gotButton: async function (i, action, id) {
+        //add await
+        if (!i.member.roles.cache.has(await db.getGuildRole(i.guildId)) && action != 'create')
+            return i.reply({ content: 'das kannst du leider nicht', ephemeral: true });
+
         switch (action) {
             case 'create':
                 this.createTicket(i, id);
                 break;
             case 'close':
-                if (!i.member.roles.cache.has(db.getGuildRole(i.guildId) || !i.member.id == db.getTicket(i.channel.id, i.guildId).user))
+                if (!i.member.id == await db.getTicketUser(i.channel.id, i.guildId).user)
                     return i.reply({ content: 'das kannst du leider nicht', ephemeral: true });
                 this.closeTicket(i);
                 break;
             case 'public':
-                if (!i.member.roles.cache.has(db.getGuildRole(i.guildId)))
-                    return i.reply({ content: 'das kannst du leider nicht', ephemeral: true });
                 this.viewTicket(i, false);
                 break;
             case 'private':
-                if (!i.member.roles.cache.has(db.getGuildRole(i.guildId)))
-                    return i.reply({ content: 'das kannst du leider nicht', ephemeral: true });
                 this.viewTicket(i, true);
                 break;
             default:
                 break;
         }
     },
-    createTicket: function (i, pannelId) {
-        const pannel = db.getPannel(pannelId);
-        const config = db.getModuleConfig('ticket', i.guildId);
+    createTicket: async function (i, panelId) {
+        const pannel = await db.getTicketPanel(panelId, i.guildId);
+        const guildRole = await db.getGuildRole(i.guildId);
         let row = new ActionRowBuilder().addComponents(dc.createButton('ticket.close.0', '✖ Close', 'Danger'));
         row.addComponents(dc.createButton('ticket.private.0', '🔒 Privat', 'Secondary', undefined, undefined, true)).addComponents(dc.createButton('ticket.public.0', '🔓 Öffentlich', 'Secondary'));
         i.guild.channels.create({
@@ -54,16 +54,16 @@ module.exports = {
                     allow: [PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ViewChannel],
                 },
                 {
-                    id: config.role,
+                    id: guildRole,
                     allow: [PermissionsBitField.Flags.SendMessages],
                 },
             ],
         })
             .then(ticket => {
-                db.insertTicket(ticket.id, pannel.name, i.user.id, i.guildId);
-                ticket.send({ embeds: [dc.sEmbed('__' + pannel.name + ' Ticket__', pannel.text, 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
+                db.insertTicket(ticket.id, i.user.id, i.guildId, pannel.log);
+                ticket.send({ embeds: [dc.sEmbed('__Ticket__', pannel.text, 'Tesh-Bot Ticket System', '0xaaeeff')], components: [row] });
                 i.reply({ content: 'weitere Infos in deinem Ticket: ' + channelMention(ticket.id), ephemeral: true });
-                ticket.edit({ name: `🆕-${db.getTicketId(ticket.id, i.guild.id)}-${i.user.username}` });
+                ticket.edit({ name: `🆕-${i.user.username}-ticket` });
             })
             .catch(console.error);
 
@@ -71,14 +71,12 @@ module.exports = {
     closeTicket: function (interaction) {
         let row = new ActionRowBuilder().addComponents(dc.createButton('ticket.open.' + interaction.channel.id, '↺ Open', 'Success'));
         interaction.reply({ embeds: [dc.sEmbed('__Ticket Geschlossen__', `Das Ticket wurde von ${interaction.user} geschlossen.\nEs wird in 15min archiviert und der Channel gelöscht.`, 'Tesh-Bot Ticket System', '0xd60000')], components: [row] });
-        const ticket = db.getTicket(interaction.channel.id, interaction.guildId);
-        const config = db.getModuleConfig('ticket', interaction.guildId);
-        //collector
+
         let open = true;
         const filter = i => i.customId === `ticket.open.${interaction.channel.id}`;
         const collector = interaction.channel.createMessageComponentCollector({
             filter,
-            time: 15 * 60 * 1000
+            time: 1
         });
         collector.on('collect',
             async i => {
@@ -90,21 +88,24 @@ module.exports = {
             });
 
         collector.on('end',
-            collected => {
+            async collected => {
                 if (open) {
-                    const log = interaction.guild.channels.cache.find(c => c.id == config.channel);
-                    db.closeTicket(ticket.id);
+                    const dbLog = await db.getTicketLog(interaction.channel.id, interaction.guildId);
+                    const log = interaction.guild.channels.cache.find(c => c.id == dbLog);
+                    db.closeTicket(interaction.channel.id, interaction.guildId);
+                    const userT = await db.getTicketUser(interaction.channel.id, interaction.guildId);
                     log.send({
-                        embeds: [dc.sEmbed('Ticket ' + ticket.id + ' geschlossen', `Das Ticket von ${userMention(ticket.user)} wurde von ${interaction.user} geschlossen.\nDie Konversation wurde gespeichert.`, 'Tesh-Bot Ticket System', '0xd60000')], files: [this.getFile(interaction, ticket.content, ticket.user)]
+                        embeds: [dc.sEmbed('Ticket geschlossen', bold(interaction.channel.name) + `\n\nDas Ticket von ${userMention(userT)} wurde von ${interaction.user} geschlossen.`, 'Tesh-Bot Ticket System', '0xd60000')]
                     });
                     setTimeout(function () {
                         interaction.channel.delete();
-                    }, 5 * 1000);
+                    }, 1);
                 }
             });
 
 
     },
+    //not used
     getFile: function (i, textObj, userid) {
         const data = JSON.parse(textObj).data;
         let text = 'Ticket dokumenierung ' + userid + '\n\n';

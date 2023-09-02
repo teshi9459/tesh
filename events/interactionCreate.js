@@ -2,6 +2,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const ticketManager = require('../exports/message/ticket');
 const { Client, Collection, GatewayIntentBits } = require('discord.js');
+const db = require('../libs/db');
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 client.commands = new Collection();
 module.exports = {
@@ -11,6 +12,8 @@ module.exports = {
       console.log(
         `${interaction.user.tag} triggered in #${interaction.channel.name} -> /${interaction.commandName} ${interaction.options.getSubcommand(false)}`
       );
+      db.logUse('bot', `${interaction.guild.id}-${interaction.user.tag} #${interaction.channel.name} -> /${interaction.commandName} ${interaction.options.getSubcommand(false)}`);
+      if (!await db.checkUser(interaction.user.id) && await db.checkGuild(interaction.guildId)) db.insertUser(interaction.user.id);
       if (client.commands.size === 0) {
         const commandsPath = path.join(__dirname, '../commands');
         const commandFiles = await fs.readdir(commandsPath);
