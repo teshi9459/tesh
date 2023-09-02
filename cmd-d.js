@@ -1,19 +1,20 @@
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord.js');
-const { clientId, guildId, token } = require('./config.json');
+const dotenv = require('dotenv');
 
-const rest = new REST({ version: '10' }).setToken(token);
+dotenv.config();
+const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
 // ...
 
 // for guild-based commands
 rest
-  .put(Routes.applicationGuildCommands(clientId, guildId), { body: [] })
+  .put(Routes.applicationGuildCommands(process.env.CLIENT_ID, process.env.GUILD_ID), { body: [] })
   .then(() => console.log('Successfully deleted all guild commands.'))
   .catch(console.error);
 
 // for global commands
 rest
-  .put(Routes.applicationCommands(clientId), { body: [] })
+  .put(Routes.applicationCommands(process.env.CLIENT_ID), { body: [] })
   .then(() => console.log('Successfully deleted all application commands.'))
   .catch(console.error);
