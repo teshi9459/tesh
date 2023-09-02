@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "nodemon",
     "start": "node .",
-    "boot": "echo FETCH DATA;git pull origin main; npm install; nodemon -x 'node index.js || touch index.js'"
+    "boot": "echo FETCH DATA;git pull origin main; npm install; nodemon -x 'node index.js || touch index.js'",
+    "boot2": "echo .....BOOT.....;gh repo sync; npm install; nodemon -x 'node index.js || touch index.js'"
   },
   "repository": {
     "type": "git",
