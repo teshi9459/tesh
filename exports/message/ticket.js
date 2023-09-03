@@ -76,7 +76,7 @@ module.exports = {
         const filter = i => i.customId === `ticket.open.${interaction.channel.id}`;
         const collector = interaction.channel.createMessageComponentCollector({
             filter,
-            time: 1
+            time: 15 * 60 * 1000
         });
         collector.on('collect',
             async i => {
@@ -99,7 +99,7 @@ module.exports = {
                     });
                     setTimeout(function () {
                         interaction.channel.delete();
-                    }, 1);
+                    }, 5 * 1000);
                 }
             });
 
