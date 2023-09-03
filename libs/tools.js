@@ -122,4 +122,12 @@ module.exports = {
     if (options === true) console.log(`tools> ${value} aus Array entfernt`);
     return arr;
   },
+  /**
+    * entfernt alle nciht lesbaren Zeichen aus einem String
+    * @param {String} input - Wert der zu bearbeiten ist.
+    * @return {String} String ohne unreadable Chars
+    */
+  removeUnreadableChar: function (input) {
+    return input.replace(/[^\x00-\x7F]/g, '');
+  }
 };

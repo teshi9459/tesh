@@ -1,5 +1,6 @@
 const mysql = require('mysql');
 const dotenv = require('dotenv');
+const tools = require('./tools');
 
 dotenv.config();
 const pool = mysql.createPool({
@@ -27,12 +28,14 @@ module.exports = {
      * logt Benutztungen
      */
     logUse: function (app, content) {
+        content = tools.removeUnreadableChar(content);
         executeQuery('INSERT INTO LogUse (app, content) VALUES (?, ?)', [app, content]);
     },
     /**
      * logt Fehler
      */
     logError: function (app, category, error) {
+        error = tools.removeUnreadableChar(errror);
         executeQuery('INSERT INTO LogError (app, category, error) VALUES (?, ?, ?)', [app, category, error]);
     },
     /**
