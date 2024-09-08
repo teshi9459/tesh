@@ -45,6 +45,7 @@ module.exports = {
         pool.query('SELECT 1 + 1 AS solution', function (error, results, fields) {
             if (error) throw error;
             console.log('Database connection successful!');
+            //module.exports.logUse('db', 'Database connection test successful!');
         });
     },
 
