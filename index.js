@@ -1,6 +1,6 @@
 const fs = require('node:fs').promises;
 const path = require('node:path');
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, Collection, GatewayIntentBits } = require('discord.js');
 const dotenv = require('dotenv');
 const express = require('express');
 const routes = require('./api/routes');
@@ -15,6 +15,24 @@ const client = new Client({
     GatewayIntentBits.GuildMembers
   ]
 });
+
+client.plugins = new Collection();
+async function loadPlugins() {
+  if (client.plugins.size === 0) {
+    const pluginsPath = path.join(__dirname, './plugins');
+    const pluginFiles = await fs.readdir(pluginsPath);
+    for (const file of pluginFiles) {
+      if (file.endsWith('.js')) {
+        const filePath = path.join(pluginsPath, file);
+        const plugin = require(filePath);
+        client.plugins.set(plugin.data.name, plugin);
+      }
+    }
+  }
+}
+
+
+
 async function loadEvents() {
   const eventsPath = path.join(__dirname, 'events');
   const eventFiles = await fs.readdir(eventsPath);
@@ -49,4 +67,5 @@ app.use('/api', clientMiddleware, routes);
 app.listen(9459, () => {
   console.log('Server listening on port http://localhost:9459');
 });
+loadPlugins();
 loadEvents().then(login);
