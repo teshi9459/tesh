@@ -13,6 +13,8 @@ module.exports = {
       case 1: //slash commands
         const plugin = interaction.client.plugins.get(interaction.commandName);
         if (!plugin) return;
+        if (!plugin.enabled) return;
+        if (!plugin.slashCommands) return;
         try {
           await plugin.executeSlashCommand(interaction);
         } catch (error) {
