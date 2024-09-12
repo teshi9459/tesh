@@ -16,12 +16,12 @@ module.exports = {
     database: false,
     logging: false,
     moderation: false,
-    embedresponse: true,
+    ephemeralresponse: true,
     setup: false,
     //SlashCommands Builder
     data: new SlashCommandBuilder()
     .setName('ping')
-    .setDescription('Replies with Pong!'),
+    .setDescription('spiel Tischtennis mit mir C:'),
 
   async executeSlashCommand(interaction) {
     //maybe add db ping and webiste ping

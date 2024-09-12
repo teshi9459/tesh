@@ -20,23 +20,20 @@ module.exports = {
   },
   /**
   * erstellt ein button
-  * @param {Number} id Button Id
+  * @param {Number} id Button Id / URL
   * @param {String} label Text auf Button
-  * @param {String} url Link for Button
-  * @param {String} emoji emoji for Button
   * @param {ButtonStyle} style Buttontyp
   * @param {Boolean} status true for disabled
   * @return {ButtonBuilder} Button
   */
-  createButton: function (id, label, style, url, emoji, status) {
+  createButton: function (id, label, style, status) {
     const obj = new ButtonBuilder()
-      .setCustomId(id)
       .setLabel(label)
       .setStyle(style)
     if (style == ButtonStyle.Link)
-      obj.setURL(url);
-    if (emoji != undefined)
-      obj.setEmoji(emoji);
+      obj.setURL(id);
+    else
+      obj.setCustomId(id)
     if (status != undefined)
       obj.setDisabled(status)
     return obj;

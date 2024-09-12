@@ -35,7 +35,7 @@ module.exports = {
      * logt Fehler
      */
     logError: function (app, category, error) {
-        error = tools.removeUnreadableChar(errror);
+        error = tools.removeUnreadableChar(error);
         executeQuery('INSERT INTO LogError (app, category, error) VALUES (?, ?, ?)', [app, category, error]);
     },
     /**
