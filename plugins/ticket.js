@@ -89,7 +89,8 @@ module.exports = {
                 default:
                     break;
             }
-            answer = 'Ticket Status wurde angepasst zu `' + statuslong + '` !'
+            answer = 'Ticket Status wurde angepasst zu **' + statuslong + '** !'
+            //api call update
             break;
         default:
             break;
@@ -104,9 +105,23 @@ module.exports = {
   },
   async executeMessage(message) {
     console.log(message.content);
+    //db.saveMassageTicket(msg.content...)
   },
   async executeButton(button) {
     button.meta = button.customId.split('.');
+    switch (button.meta[1]) {
+        case 'newt':
+            
+            break;
+        case 'close':
+            //nachricht und channel unschreibbar
+            //timer f löschen des chanels
+            //..
+            //srchiviert ticket
+            break;
+        default:
+            break;
+    }
     console.log(button.customId);
   }
 };
