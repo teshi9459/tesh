@@ -1,30 +1,22 @@
 {
-  "name": "tesh",
+  "name": "discord-bot",
   "version": "1.0.0",
-  "description": "discord.js v14",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
     "dev": "nodemon",
     "start": "node .",
     "boot": "echo FETCH DATA;git pull origin main; npm install; nodemon -x 'node index.js || touch index.js'",
     "boot2": "echo .....BOOT.....;gh repo sync; npm install; nodemon -x 'node index.js || touch index.js'"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/teshi9459/tesh.git"
-  },
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/teshi9459/tesh/issues"
-  },
-  "homepage": "https://github.com/teshi9459/tesh#readme",
   "dependencies": {
+    "axios": "^1.9.0",
     "cors": "^2.8.5",
     "discord.js": "^14.16.1",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "mysql": "^2.18.1",
+    "mysql2": "^3.14.1",
+    "nodemon": "^3.1.9",
     "ping": "^0.4.4"
   }
 }

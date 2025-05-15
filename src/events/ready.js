@@ -1,18 +1,18 @@
-const db = require('../libs/db');
 module.exports = {
-  name: 'ready',
+  name: "ready",
   once: true,
   execute(client) {
     const guildCount = client.guilds.cache.size;
-    console.log(`online as ${client.user.tag} auf ${guildCount} Servern`);
+
+    console.log(`[✓] Verbindung zu ${guildCount} Servern hergestellt`);
+
     client.user.setPresence({
       activities: [
         {
           name: `auf ${guildCount} Servern`,
         },
       ],
-      status: 'online',
+      status: "online",
     });
-    db.setupCheck();
   },
 };
