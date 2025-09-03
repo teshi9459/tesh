@@ -3,7 +3,6 @@ const dc = require("../utils/dc");
 const ms = require("ms");
 const axios = require("axios");
 const { api } = require("../utils/api");
-const { type } = require("os");
 
 module.exports = {
   // Info
@@ -38,7 +37,7 @@ module.exports = {
 
     try {
       const start = Date.now();
-      const res = await axios.get("http://localhost:3001/api/ping");
+      const res = await api.get("/ping");
       const apiReseve = res.data.arrivalTime;
       apiPing = apiReseve - start;
       dbPing = typeof res.data.dbPing === "number" ? res.data.dbPing : null;
@@ -47,6 +46,7 @@ module.exports = {
     }
 
     const lines = [
+      `------------------------------------`,
       `⏱️ **Bot Uptime:** \`${uptime}\``,
       `📡 **Discord-Ping:** \`${discordPing}ms\``,
       apiPing !== null

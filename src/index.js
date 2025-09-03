@@ -5,6 +5,7 @@ const cors = require("cors");
 const { Client, GatewayIntentBits, Collection } = require("discord.js");
 const dotenv = require("dotenv");
 const routes = require("./utils/routes.js");
+const { api } = require("./utils/api.js");
 
 dotenv.config();
 
@@ -61,14 +62,26 @@ function clientMiddleware(req, res, next) {
 }
 
 // Express-Server Setup
-function startApiServer() {
+function startBotApiServer() {
   const app = express();
   app.use(cors());
   app.use("/api", clientMiddleware, routes);
-  const port = process.env.API_PORT || 9459;
+  const port = process.env.PORT || 9459;
   app.listen(port, () => {
-    console.log(`[✓] API hört auf http://localhost:${port}`);
+    console.log(`[✓] Bot API hört auf http://localhost:${port}`);
   });
+}
+
+//Test-backend-API
+function checkApiServer() {
+  api
+    .get("/")
+    .then((response) => {
+      console.log(`[✓] API Brain-Server running`);
+    })
+    .catch((error) => {
+      console.error("[✗] Fehler beim Abrufen des API-Status:", error);
+    });
 }
 
 // Haupt-Init
@@ -78,7 +91,8 @@ async function main() {
     await loadEvents();
     await client.login(process.env.BOT_TOKEN);
     console.log(`[✓] Bot eingeloggt als ${client.user.tag}`);
-    startApiServer();
+    startBotApiServer();
+    checkApiServer();
   } catch (error) {
     console.error("[✗] Fehler beim Start:", error);
     process.exit(1);

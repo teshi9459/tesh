@@ -1,6 +1,6 @@
 const axios = require("axios");
 
-const API_URL = process.env.API_URL || "http://localhost:3001/api";
+const API_URL = process.env.API_URL;
 const BOT_SECRET = process.env.BOT_SECRET;
 
 const api = axios.create({

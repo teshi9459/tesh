@@ -1,6 +1,4 @@
 const fs = require("fs");
-//const db = require('../libs/db');
-const { once } = require("events");
 module.exports = {
   name: "messageCreate",
   once: false,

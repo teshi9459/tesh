@@ -7,7 +7,6 @@ const {
 } = require("discord.js");
 const dc = require("../utils/dc.js");
 const { api } = require("../utils/api.js");
-const { executeSlashCommand } = require("./ping.js");
 
 module.exports = {
   // Info
@@ -20,7 +19,7 @@ module.exports = {
   buttons: true,
   selectMenues: false,
   modal: false,
-  messages: true,
+  messages: false,
 
   // Kategorien
   database: true,
@@ -55,6 +54,12 @@ module.exports = {
             .setDescription("Channelkategorie für neue Tickets")
             .setRequired(true)
             .addChannelTypes(4)
+        )
+        .addRoleOption((opt) =>
+          opt
+            .setName("team_role")
+            .setDescription("Rolle, die Tickets sehen/bearbeiten darf")
+            .setRequired(true)
         )
         .addStringOption((opt) =>
           opt
@@ -104,6 +109,7 @@ module.exports = {
       const category = interaction.options.getChannel("category");
       const type = interaction.options.getString("type");
       let label = interaction.options.getString("label");
+      const teamRole = interaction.options.getRole("team_role");
       if (label.length > 80) label = label.slice(0, 80);
 
       await interaction.reply({
@@ -128,6 +134,7 @@ module.exports = {
           category_id: category.id,
           button_id: customId,
           type: type,
+          team_role_id: teamRole.id,
         });
 
         const row = new ActionRowBuilder().addComponents(
@@ -142,7 +149,6 @@ module.exports = {
         );
 
         await msg.edit({ embeds: [panelEmbed], components: [row] });
-        await interaction.deleteReply();
       } catch (err) {
         console.error("Fehler beim Erstellen des Panels:", err);
         await interaction.followUp({
