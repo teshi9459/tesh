@@ -90,6 +90,11 @@ module.exports = {
           case "ticket":
           case "t":
             return await handleTicketButton(interaction);
+          case "w":
+          case "words": {
+            const handleWordsButton = require("../handler/buttons/wordsButton");
+            return await handleWordsButton(interaction);
+          }
           default:
             console.warn(`[⚠️] Unbekannter Button-Typ: ${type}`);
         }
