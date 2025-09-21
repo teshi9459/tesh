@@ -42,7 +42,7 @@ module.exports = {
       apiPing = apiReseve - start;
       dbPing = typeof res.data.dbPing === "number" ? res.data.dbPing : null;
     } catch (err) {
-      console.error("[✗] Fehler beim Abrufen von /api/ping:", err.message);
+      logger.error({ err }, "Fehler beim Abrufen von /api/ping");
     }
 
     const lines = [

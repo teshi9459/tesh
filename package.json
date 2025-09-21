@@ -6,7 +6,11 @@
     "dev": "nodemon",
     "start": "node .",
     "boot": "echo FETCH DATA;git pull origin main; npm install; nodemon -x 'node index.js || touch index.js'",
-    "boot2": "echo .....BOOT.....;gh repo sync; npm install; nodemon -x 'node index.js || touch index.js'"
+    "boot2": "echo .....BOOT.....;gh repo sync; npm install; nodemon -x 'node index.js || touch index.js'",
+    "lint": "eslint \"src/**/*.{js,cjs}\"",
+    "format": "prettier --write \"src/**/*.{js,cjs,json}\"",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "axios": "^1.9.0",
@@ -17,6 +21,17 @@
     "mysql": "^2.18.1",
     "mysql2": "^3.14.1",
     "nodemon": "^3.1.9",
-    "ping": "^0.4.4"
+    "ping": "^0.4.4",
+    "pino": "^9.3.1",
+    "prom-client": "^15.1.1"
+  },
+  "devDependencies": {
+    "pino-pretty": "^11.2.2",
+    "eslint": "^9.13.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.31.0",
+    "prettier": "^3.3.3",
+    "jest": "^29.7.0",
+    "@jest/globals": "^29.7.0"
   }
 }

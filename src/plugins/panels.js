@@ -1,4 +1,4 @@
-const {
+﻿const {
   SlashCommandBuilder,
   PermissionFlagsBits,
   ActionRowBuilder,
@@ -7,6 +7,7 @@ const {
 } = require("discord.js");
 const dc = require("../utils/dc.js");
 const { api } = require("../utils/api.js");
+const logger = require("../utils/logger.js");
 
 module.exports = {
   // Info
@@ -51,7 +52,7 @@ module.exports = {
         .addChannelOption((opt) =>
           opt
             .setName("category")
-            .setDescription("Channelkategorie für neue Tickets")
+            .setDescription("Channelkategorie fÃ¼r neue Tickets")
             .setRequired(true)
             .addChannelTypes(4)
         )
@@ -71,7 +72,7 @@ module.exports = {
     .addSubcommand((sub) =>
       sub
         .setName("delete")
-        .setDescription("Panel löschen")
+        .setDescription("Panel lÃ¶schen")
         .addStringOption((opt) =>
           opt
             .setName("message_id")
@@ -138,21 +139,21 @@ module.exports = {
         });
 
         const row = new ActionRowBuilder().addComponents(
-          dc.createButton(customId, "📨 Ticket", ButtonStyle.Primary, null)
+          dc.createButton(customId, "ðŸ“¨ Ticket", ButtonStyle.Primary, null)
         );
 
         const panelEmbed = dc.sEmbed(
           "Ticket erstellen",
-          label + "\n\n*öffne ein Ticket in dem du auf den Button klickst* ↓",
+          label + "\n\n*Ã¶ffne ein Ticket in dem du auf den Button klickst* â†“",
           "Ticket Pannel " + msg.id,
           "#aaeeff"
         );
 
         await msg.edit({ embeds: [panelEmbed], components: [row] });
       } catch (err) {
-        console.error("Fehler beim Erstellen des Panels:", err);
+        logger.error({ err }, "Fehler beim Erstellen des Panels");
         await interaction.followUp({
-          content: "❌ Fehler beim Erstellen des Panels.",
+          content: "âŒ Fehler beim Erstellen des Panels.",
           flags: MessageFlags.Ephemeral,
         });
       }
@@ -168,13 +169,13 @@ module.exports = {
         await msg.delete();
 
         return interaction.reply({
-          content: `Panel ${messageId} gelöscht.`,
+          content: `Panel ${messageId} gelÃ¶scht.`,
           flags: MessageFlags.Ephemeral,
         });
       } catch (err) {
-        console.error("Fehler beim Löschen des Panels:", err);
+        logger.error("Fehler beim LÃ¶schen des Panels:", err);
         return interaction.reply({
-          content: "❌ Panel konnte nicht gelöscht werden.",
+          content: "âŒ Panel konnte nicht gelÃ¶scht werden.",
           flags: MessageFlags.Ephemeral,
         });
       }
@@ -191,7 +192,7 @@ module.exports = {
           const row = new ActionRowBuilder().addComponents(
             dc.createButton(
               "ticket_off",
-              "🔒 Nicht aktiv",
+              "ðŸ”’ Nicht aktiv",
               ButtonStyle.Primary,
               true
             )
@@ -201,7 +202,7 @@ module.exports = {
           const row = new ActionRowBuilder().addComponents(
             dc.createButton(
               "ticket_" + msg.id,
-              "📨 Ticket",
+              "ðŸ“¨ Ticket",
               ButtonStyle.Primary,
               null
             )
@@ -214,9 +215,9 @@ module.exports = {
           flags: MessageFlags.Ephemeral,
         });
       } catch (err) {
-        console.error("Fehler beim Ändern des Panel-Status:", err);
+        logger.error("Fehler beim Ã„ndern des Panel-Status:", err);
         return interaction.reply({
-          content: "❌ Panel-Status konnte nicht geändert werden.",
+          content: "âŒ Panel-Status konnte nicht geÃ¤ndert werden.",
           flags: MessageFlags.Ephemeral,
         });
       }

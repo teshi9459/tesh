@@ -1,11 +1,12 @@
-const fs = require("node:fs/promises");
+﻿const fs = require("node:fs/promises");
 const path = require("node:path");
 const express = require("express");
 const cors = require("cors");
 const { Client, GatewayIntentBits, Collection } = require("discord.js");
 const dotenv = require("dotenv");
 const routes = require("./utils/routes.js");
-const { api } = require("./utils/api.js");
+const { api, metricsRegister } = require("./utils/api.js");
+const logger = require("./utils/logger.js");
 
 dotenv.config();
 
@@ -32,7 +33,7 @@ async function loadPlugins() {
       client.plugins.set(plugin.name, plugin);
     }
   }
-  console.log(`[+] ${pluginFiles.length} Plugins geladen`);
+  logger.info({ count: pluginFiles.length }, "Plugins geladen");
 }
 
 // Event-Loader
@@ -52,10 +53,10 @@ async function loadEvents() {
       }
     }
   }
-  console.log(`[+] ${eventFiles.length} Events geladen`);
+  logger.info({ count: eventFiles.length }, "Events geladen");
 }
 
-// Middleware: fügt Bot-Client in Request ein
+// Middleware: fÃ¼gt Bot-Client in Request ein
 function clientMiddleware(req, res, next) {
   req.client = client;
   next();
@@ -66,9 +67,18 @@ function startBotApiServer() {
   const app = express();
   app.use(cors());
   app.use("/api", clientMiddleware, routes);
+  app.get("/metrics", async (_req, res) => {
+    try {
+      res.set("Content-Type", metricsRegister.contentType);
+      res.send(await metricsRegister.metrics());
+    } catch (err) {
+      logger.error({ err }, "Fehler beim Ausliefern der Metrics");
+      res.status(500).send("metrics unavailable");
+    }
+  });
   const port = process.env.PORT || 9459;
   app.listen(port, () => {
-    console.log(`[✓] Bot API hört auf http://localhost:${port}`);
+    logger.info({ port }, "Bot API gestartet");
   });
 }
 
@@ -76,11 +86,11 @@ function startBotApiServer() {
 function checkApiServer() {
   api
     .get("/")
-    .then((response) => {
-      console.log(`[✓] API Brain-Server running`);
+    .then(() => {
+      logger.info("Brain-API erreichbar");
     })
     .catch((error) => {
-      console.error("[✗] Fehler beim Abrufen des API-Status:", error);
+      logger.error({ err: error }, "Fehler beim Abrufen des API-Status");
     });
 }
 
@@ -90,11 +100,11 @@ async function main() {
     await loadPlugins();
     await loadEvents();
     await client.login(process.env.BOT_TOKEN);
-    console.log(`[✓] Bot eingeloggt als ${client.user.tag}`);
+    logger.info({ tag: client.user.tag }, "Bot eingeloggt");
     startBotApiServer();
     checkApiServer();
   } catch (error) {
-    console.error("[✗] Fehler beim Start:", error);
+    logger.error({ err: error }, "Fehler beim Bot-Start");
     process.exit(1);
   }
 }

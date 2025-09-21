@@ -1,8 +1,8 @@
 const express = require("express");
 const { performance } = require("node:perf_hooks");
 const mysql = require("mysql2/promise");
+const logger = require("./logger.js");
 require("dotenv").config();
-
 const router = express.Router();
 
 router.get("/", async (req, res) => {
@@ -27,7 +27,7 @@ router.get("/", async (req, res) => {
 
     await connection.end();
   } catch (err) {
-    console.error("[✗] Fehler beim DB-Ping:", err.message);
+    logger.error("[✗] Fehler beim DB-Ping:", err.message);
   }
 
   const apiUptime = Math.round(performance.now() - apiStart);

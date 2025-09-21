@@ -1,3 +1,4 @@
+﻿const logger = require("../utils/logger.js");
 module.exports = {
   name: "guildCreate",
   once: false,
@@ -8,10 +9,10 @@ module.exports = {
         discord_id: guild.id,
         last_known_name: guild.name,
       });
-      console.log(`[✓] Guild-Sync (join): ${guild.id} (${guild.name})`);
+      logger.info({ guildId: guild.id, guildName: guild.name }, "Guild-Sync (join)");
     } catch (err) {
-      console.error(
-        `[✗] Guild-Sync (join) fehlgeschlagen: ${guild?.id}`,
+      logger.error(
+        `[×] Guild-Sync (join) fehlgeschlagen: ${guild?.id}`,
         err?.response?.data || err.message
       );
     }

@@ -1,16 +1,17 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonStyle } = require("discord.js");
+﻿const { EmbedBuilder, ActionRowBuilder, ButtonStyle } = require("discord.js");
 const { api } = require("../utils/api.js");
+const logger = require("../utils/logger.js");
 const dc = require("../utils/dc.js");
 
 function buildTicketEmbed({ ticket, logCount = 0 }) {
   const creatorMention = ticket?.creator_id ? `<@${ticket.creator_id}>` : "-";
   const assignedMention = ticket?.assigned_mod_id
     ? `<@${ticket.assigned_mod_id}>`
-    : "— nicht zugewiesen —";
+    : "â€” nicht zugewiesen â€”";
   const waitStr = ticket?.waiting === "user" ? "User" : "Team";
 
   return new EmbedBuilder()
-    .setTitle("Ticket Übersicht")
+    .setTitle("Ticket Ãœbersicht")
     .setColor("#aaeeff")
     .addFields(
       { name: "Erstellt von", value: creatorMention, inline: true },
@@ -46,7 +47,7 @@ module.exports = {
   name: "tickets",
   enabled: true,
 
-  // Wir hören auf Nachrichten
+  // Wir hÃ¶ren auf Nachrichten
   messages: true,
 
   async executeMessage(message) {
@@ -54,7 +55,7 @@ module.exports = {
       // Nur in Guild und Textchannel relevant
       if (!message.guild || message.author.bot) return;
 
-      // Prüfen, ob Channel ein Ticket ist (id == tickets.id)
+      // PrÃ¼fen, ob Channel ein Ticket ist (id == tickets.id)
       const channelId = message.channel.id;
       let ticket;
       try {
@@ -87,13 +88,13 @@ module.exports = {
       try {
         await api.patch(`/tickets/${channelId}`, { waiting: newWaiting });
       } catch (e) {
-        // tolerieren, falls Patch fehlschlägt
+        // tolerieren, falls Patch fehlschlÃ¤gt
       }
 
       // Hauptnachricht aktualisieren
       if (ticket.message_id) {
         try {
-          // Ticket frisch laden (falls Status/Visibility geändert)
+          // Ticket frisch laden (falls Status/Visibility geÃ¤ndert)
           const { data: fresh } = await api.get(`/tickets/${channelId}`);
           const mainMsg = await message.channel.messages.fetch(fresh.message_id);
           const embed = buildTicketEmbed({ ticket: fresh, logCount });
@@ -103,7 +104,7 @@ module.exports = {
         }
       }
     } catch (err) {
-      console.error("[tickets] Fehler in executeMessage:", err?.response?.data || err.message);
+      logger.error({ err, details: err?.response?.data }, "Tickets executeMessage fehlgeschlagen");
     }
   },
 };

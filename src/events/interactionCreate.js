@@ -1,3 +1,4 @@
+const logger = require("../utils/logger.js");
 const handleTicketButton = require("../handler/buttons/ticketButton");
 
 module.exports = {
@@ -13,7 +14,7 @@ module.exports = {
       : "unknown interaction";
     const who = u ? `${u.username} (${u.id})` : "unknown";
     const where = g ? `${g.name} (${g.id})` : "DM";
-    console.log(`[→] interaction=${what} user=${who} guild=${where}`);
+    logger.debug({ interaction: what, user: who, guild: where }, "Interaction empfangen");
 
     // 1) User-Abfrage/Bearbeitung/Erstellung über Brain-API (inkl. Guild-Mapping)
     try {
@@ -31,7 +32,7 @@ module.exports = {
             await api.patch(`/users/${existing.id}`, {
               last_known_username: u.username,
             });
-            console.log(`[✓] User aktualisiert: ${u.id} (last_known_username)`);
+            logger.info({ discordId: u.id }, "User aktualisiert (last_known_username)");
           }
           // immer Guild-Mapping sicherstellen (falls in Guild)
           if (g) {
@@ -42,10 +43,7 @@ module.exports = {
               });
               // kein lautes Log nötig – still ok
             } catch (e) {
-              console.warn(
-                `[!] Konnte Mapping user↔guild nicht setzen (${u.id}↔${g?.id}):`,
-                e?.response?.data || e.message
-              );
+              logger.warn({ userId: u.id, guildId: g?.id, error: e?.response?.data || e.message }, "Konnte User-Guild-Mapping nicht setzen");
             }
           }
         } else {
@@ -56,14 +54,11 @@ module.exports = {
             is_admin: 0,
             ...(g ? { guild_discord_id: g.id } : {}),
           });
-          console.log(`[+] Neuer User registriert: ${u.id}`);
+          logger.info({ discordId: u.id }, "Neuer User registriert");
         }
       }
     } catch (err) {
-      console.error(
-        `[✗] User-Sync fehlgeschlagen für ${who}:`,
-        err?.response?.data || err.message
-      );
+      logger.error({ err, user: who }, "User-Sync fehlgeschlagen");
     }
 
     let plugin;
@@ -76,10 +71,7 @@ module.exports = {
         try {
           await plugin.executeSlashCommand(interaction);
         } catch (error) {
-          console.error(
-            `[✗] Fehler in SlashCommand '${interaction.commandName}' user=${who} guild=${where}:`,
-            error
-          );
+          logger.error({ err: error, command: interaction.commandName, user: who, guild: where }, "Fehler in SlashCommand");
         }
         break;
 
@@ -96,13 +88,13 @@ module.exports = {
             return await handleWordsButton(interaction);
           }
           default:
-            console.warn(`[⚠️] Unbekannter Button-Typ: ${type}`);
+            logger.warn({ type }, "Unbekannter Button-Typ");
         }
 
         break;
 
       default:
-        console.warn(`[!] Unbekannter Interaktionstyp (${interaction.type})`);
+        logger.warn({ type: interaction.type }, "Unbekannter Interaktionstyp");
         break;
     }
   },

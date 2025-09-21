@@ -1,11 +1,12 @@
+const logger = require("../utils/logger.js");
 module.exports = {
   name: "clientReady",
   once: true,
   execute(client) {
     const guildCount = client.guilds.cache.size;
 
-    console.log(`[✓] Verbindung zu ${guildCount} Servern hergestellt`);
-    console.log(`[?] starte Synchronisation der Guilds...`);
+    logger.info({ guildCount }, "Verbindung zu Guilds hergestellt");
+    logger.info("Starte Synchronisation der Guilds");
 
     // überprüfe via Brain-API; wenn nicht vorhanden, füge sie hinzu (upsert auf discord_id)
     (async () => {
@@ -21,7 +22,7 @@ module.exports = {
                 last_known_name: guild.name,
               })
               .catch((err) => {
-                console.error(
+                logger.error(
                   `[✗] API-Fehler beim Sync von Guild ${guild.id}:`,
                   err?.response?.data || err.message
                 );
@@ -30,9 +31,9 @@ module.exports = {
         });
 
         await Promise.all(tasks);
-        console.log("[✓] Guild-Sync über Brain-API abgeschlossen");
+        logger.info("[✓] Guild-Sync über Brain-API abgeschlossen");
       } catch (err) {
-        console.error("[✗] Fehler beim Guild-Sync-Setup:", err.message);
+        logger.error("[✗] Fehler beim Guild-Sync-Setup:", err.message);
       }
     })();
 

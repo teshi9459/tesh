@@ -7,6 +7,7 @@ const {
   EmbedBuilder,
 } = require("discord.js");
 const { api } = require("../../utils/api.js");
+const logger = require("../../utils/logger.js");
 const dc = require("../../utils/dc.js");
 
 function buildTicketEmbed({ ticket, logCount = 0 }) {
@@ -118,7 +119,7 @@ async function createTicket(interaction) {
 
     await interaction.editReply({ content: `✅ Dein Ticket wurde erstellt: <#${ticketChannel.id}>` });
   } catch (err) {
-    console.error("Fehler bei Ticket-Erstellung:", err?.response?.data || err.message);
+    logger.error("Fehler bei Ticket-Erstellung:", err?.response?.data || err.message);
     return interaction.editReply("❌ Fehler beim Erstellen des Tickets.");
   }
 }
@@ -139,7 +140,7 @@ async function claimTicket(interaction, ticketId) {
     if (mainMsg) await mainMsg.edit({ embeds: [embed], components: buildTicketButtons(updated) });
     await interaction.editReply("✅ Ticket übernommen.");
   } catch (err) {
-    console.error("Fehler beim Claim:", err?.response?.data || err.message);
+    logger.error("Fehler beim Claim:", err?.response?.data || err.message);
     await interaction.editReply("❌ Fehler beim Claim.");
   }
 }
@@ -187,7 +188,7 @@ async function closeTicket(interaction, ticketId) {
     }
     await interaction.editReply("✅ Ticket geschlossen.");
   } catch (err) {
-    console.error("Fehler beim Schließen:", err?.response?.data || err.message);
+    logger.error("Fehler beim Schließen:", err?.response?.data || err.message);
     await interaction.editReply("❌ Fehler beim Schließen.");
   }
 }
@@ -206,7 +207,7 @@ async function toggleImportant(interaction, ticketId) {
     if (mainMsg) await mainMsg.edit({ embeds: [embed], components: buildTicketButtons(updated) });
     await interaction.editReply(`✅ Status auf '${newStatus}' gesetzt.`);
   } catch (err) {
-    console.error("Fehler beim Setzen 'Wichtig':", err?.response?.data || err.message);
+    logger.error("Fehler beim Setzen 'Wichtig':", err?.response?.data || err.message);
     await interaction.editReply("❌ Fehler beim Setzen des Status.");
   }
 }
@@ -225,7 +226,7 @@ async function toggleWaiting(interaction, ticketId) {
     if (mainMsg) await mainMsg.edit({ embeds: [embed], components: buildTicketButtons(updated) });
     await interaction.editReply(`✅ Wartet jetzt auf '${newWaiting}'.`);
   } catch (err) {
-    console.error("Fehler beim Setzen 'Wartet':", err?.response?.data || err.message);
+    logger.error("Fehler beim Setzen 'Wartet':", err?.response?.data || err.message);
     await interaction.editReply("❌ Fehler beim Setzen des Status.");
   }
 }
@@ -264,7 +265,7 @@ async function toggleVisibility(interaction, ticketId) {
     if (mainMsg) await mainMsg.edit({ embeds: [embed], components: buildTicketButtons(updated) });
     await interaction.editReply(`✅ Team-Sichtbarkeit: ${newLevel ? "an" : "aus"}.`);
   } catch (err) {
-    console.error("Fehler beim Umschalten Sichtbarkeit:", err?.response?.data || err.message);
+    logger.error("Fehler beim Umschalten Sichtbarkeit:", err?.response?.data || err.message);
     await interaction.editReply("❌ Fehler bei der Sichtbarkeit.");
   }
 }
@@ -283,7 +284,7 @@ async function reopenTicket(interaction, ticketId) {
     }
     await interaction.editReply("✅ Ticket wieder offen.");
   } catch (err) {
-    console.error("Fehler beim Wiederöffnen:", err?.response?.data || err.message);
+    logger.error("Fehler beim Wiederöffnen:", err?.response?.data || err.message);
     await interaction.editReply("❌ Fehler beim Wiederöffnen.");
   }
 }
@@ -319,7 +320,7 @@ async function archiveTicket(interaction, ticketId) {
       try { await channel.delete("Ticket archiviert"); } catch {}
     }
   } catch (err) {
-    console.error("Fehler beim Archivieren:", err?.response?.data || err.message);
+    logger.error("Fehler beim Archivieren:", err?.response?.data || err.message);
     await interaction.editReply("❌ Fehler beim Archivieren.");
   }
 }

@@ -7,37 +7,96 @@
   MessageFlags,
   EmbedBuilder,
 } = require("discord.js");
-const { api } = require("../utils/api.js");
-const tools = require("../utils/tools.js");
+const { brainApi, BrainApiError } = require("../utils/api.js");
+const logger = require("../utils/logger.js");
 const dc = require("../utils/dc.js");
+
+const CONFIG_CACHE_TTL_MS = Number(process.env.WORDS_CONFIG_CACHE_TTL_MS ?? 30000);
+const CATEGORY_CACHE_TTL_MS = Number(
+  process.env.WORDS_CATEGORY_CACHE_TTL_MS ?? 30000
+);
+
+const configCache = new Map();
+const categoryCache = new Map();
+
 function isMonitoredChannel(categoryIds, channel) {
   const cat = channel.parentId;
   if (!cat) return false;
   return categoryIds.includes(cat);
 }
 
-async function fetchConfig(guildId) {
+function getCached(cache, key) {
+  const entry = cache.get(key);
+  if (!entry) return undefined;
+  if (entry.expiresAt < Date.now()) {
+    cache.delete(key);
+    return undefined;
+  }
+  return entry.value;
+}
+
+function setCached(cache, key, value, ttl) {
+  if (!ttl || ttl <= 0) {
+    cache.delete(key);
+    return;
+  }
+  cache.set(key, { value, expiresAt: Date.now() + ttl });
+}
+
+function invalidateConfigCache(guildId) {
+  configCache.delete(guildId);
+}
+
+function invalidateCategoryCache(guildId) {
+  categoryCache.delete(guildId);
+}
+
+async function fetchConfig(guildId, { forceRefresh = false } = {}) {
+  const cached = getCached(configCache, guildId);
+  if (!forceRefresh && cached !== undefined) return cached;
+
   try {
-    const { data } = await api.get(`/words/config/${guildId}`);
+    const data = await brainApi.get(`/words/config/${guildId}`);
+    setCached(configCache, guildId, data, CONFIG_CACHE_TTL_MS);
     return data;
-  } catch (e) {
-    return null;
+  } catch (error) {
+    if (error instanceof BrainApiError && error.status === 404) {
+      setCached(configCache, guildId, null, CONFIG_CACHE_TTL_MS);
+      return null;
+    }
+    throw error;
   }
 }
 
-async function ensureLogChannel(guild, cfg) {
+async function fetchCategories(guildId, { forceRefresh = false } = {}) {
+  const cached = getCached(categoryCache, guildId);
+  if (!forceRefresh && cached !== undefined) return cached;
+
+  const data = await brainApi.get(`/words/categories/${guildId}`);
+  const categories = Array.isArray(data?.categories) ? data.categories : [];
+  setCached(categoryCache, guildId, categories, CATEGORY_CACHE_TTL_MS);
+  return categories;
+}
+
+async function ensureLogChannel(guild, cfg = {}) {
   if (cfg?.log_channel_id) return cfg.log_channel_id;
-  const ch = await guild.channels.create({
+
+  const channel = await guild.channels.create({
     name: "words-log",
     type: ChannelType.GuildText,
   });
-  await api.patch(`/words/config/${guild.id}`, { log_channel_id: ch.id });
-  return ch.id;
-}
 
-async function fetchCategories(guildId) {
-  const { data } = await api.get(`/words/categories/${guildId}`);
-  return data.categories || [];
+  await brainApi.patch(
+    `/words/config/${guild.id}`,
+    { log_channel_id: channel.id },
+    undefined,
+    {
+      userMessage: "Der Log-Kanal konnte nicht gespeichert werden.",
+    }
+  );
+
+  invalidateConfigCache(guild.id);
+  return channel.id;
 }
 
 function countWords(text) {
@@ -47,7 +106,7 @@ function countWords(text) {
 }
 
 function buildReportEmbed(report) {
-  const e = new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setTitle(`Words Report #${report.id}`)
     .setColor("#ffa500")
     .addFields(
@@ -57,14 +116,74 @@ function buildReportEmbed(report) {
         inline: true,
       },
       { name: "Channel", value: `<#${report.channel_id}>`, inline: true },
+      { name: "Status", value: report.status, inline: true },
       { name: "Wörter", value: String(report.word_count), inline: true },
-      { name: "Minimum", value: `min ${report.min_words}`, inline: true },
-      { name: "Differenz", value: String(report.diff), inline: true },
-      { name: "Status", value: report.status, inline: true }
+      { name: "Minimum", value: String(report.min_words), inline: true },
+      { name: "Differenz", value: String(report.diff), inline: true }
     )
     .setFooter({ text: `messageId: ${report.message_id}` });
-  if (report.content) e.setDescription(report.content.slice(0, 1900));
-  return e;
+
+  if (report.content) embed.setDescription(report.content.slice(0, 1900));
+  return embed;
+}
+
+function formatReportTable(reports) {
+  const headers = ["ID","Wörter", "Status", "Nachricht"];
+  const rows = reports.map((report) => [
+    `#${report.id}`,
+    String(report.word_count),
+    String(report.status ?? "-"),
+    report.content,
+  ]);
+
+  const widths = headers.map((header, idx) =>
+    Math.max(header.length, ...rows.map((row) => row[idx].length))
+  );
+
+  const formatRow = (row) =>
+    row.map((value, idx) => value.padEnd(widths[idx])).join(" | ");
+
+  const separator = widths.map((w) => "-".repeat(w)).join("-+-");
+  return [formatRow(headers), separator, ...rows.map(formatRow)].join("\n");
+}
+
+async function respondWithApiError(target, error, fallback) {
+  const content =
+    error instanceof BrainApiError && error.userMessage
+      ? error.userMessage
+      : fallback;
+
+  if (!content) return;
+
+  try {
+    if (typeof target?.isRepliable === "function" && target.isRepliable()) {
+      if (target.deferred || target.replied) {
+        await target.followUp({ content, flags: MessageFlags.Ephemeral });
+      } else {
+        await target.reply({ content, flags: MessageFlags.Ephemeral });
+      }
+    } else if (typeof target?.reply === "function") {
+      await target.reply({
+        content,
+        allowedMentions: { repliedUser: false },
+      });
+    }
+  } catch (err) {
+    logger.error({ err }, "Fehler beim Senden der API-Fehlerrückmeldung");
+  }
+}
+
+function resolveIgnorePrefixes(cfg) {
+  const defaults = ["(", "{", "[", ")", "]", "}"];
+  if (!cfg?.ignore_prefixes) return defaults;
+
+  try {
+    const parsed = JSON.parse(cfg.ignore_prefixes);
+    if (Array.isArray(parsed) && parsed.length) return parsed;
+  } catch (error) {
+    logger.debug({ err: error }, "Konnte ignore_prefixes nicht parsen");
+  }
+  return defaults;
 }
 
 module.exports = {
@@ -76,7 +195,7 @@ module.exports = {
 
   data: new SlashCommandBuilder()
     .setName("words")
-    .setDescription("WortlÃ¤ngen-Ãœberwachung konfigurieren")
+    .setDescription("Wortlängen-Überwachung konfigurieren")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addSubcommand((sub) =>
       sub
@@ -85,7 +204,6 @@ module.exports = {
         .addIntegerOption((o) =>
           o.setName("min").setDescription("Mindestwörter").setRequired(true)
         )
-
         .addChannelOption((o) =>
           o
             .setName("log_channel")
@@ -116,7 +234,7 @@ module.exports = {
     .addSubcommand((sub) =>
       sub
         .setName("channel_add")
-        .setDescription("Kategorie zur Ãœberwachung hinzufügen")
+        .setDescription("Kategorie zur Überwachung hinzufügen")
         .addChannelOption((o) =>
           o
             .setName("category")
@@ -128,7 +246,7 @@ module.exports = {
     .addSubcommand((sub) =>
       sub
         .setName("channel_remove")
-        .setDescription("Kategorie aus Ãœberwachung entfernen")
+        .setDescription("Kategorie aus Überwachung entfernen")
         .addChannelOption((o) =>
           o
             .setName("category")
@@ -149,219 +267,312 @@ module.exports = {
   async executeSlashCommand(interaction) {
     const sub = interaction.options.getSubcommand();
     const guildId = interaction.guild.id;
-    const cfg = await fetchConfig(guildId);
 
-    if (sub === "setup") {
-      const min = interaction.options.getInteger("min");
-      // max entfernt: nur Mindestwert wird verwendet
-      const logCh = interaction.options.getChannel("log_channel");
-      const teamRole = interaction.options.getRole("teamrole");
+    try {
+      switch (sub) {
+        case "setup": {
+          const min = interaction.options.getInteger("min");
+          const logCh = interaction.options.getChannel("log_channel");
+          const teamRole = interaction.options.getRole("teamrole");
 
-      // Upsert Config in DB
-      await interaction.reply({
-        content: "Speichere Konfiguration â€¦",
-        flags: MessageFlags.Ephemeral,
-      });
-      await api.patch(`/words/config/${guildId}`, {
-        min_words: min,
-        // max_words entfernt
-        ...(teamRole ? { team_role_id: teamRole.id } : {}),
-        ...(logCh ? { log_channel_id: logCh.id } : {}),
-      });
-      // Sicherstellen, dass Log-Channel existiert
-      const cfgAfter = await fetchConfig(guildId);
-      if (!cfgAfter?.log_channel_id && !logCh) {
-        await ensureLogChannel(
-          interaction.guild,
-          cfgAfter || { log_channel_id: null }
-        );
+          await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+          await brainApi.patch(
+            `/words/config/${guildId}`,
+            {
+              min_words: min,
+              ...(teamRole ? { team_role_id: teamRole.id } : {}),
+              ...(logCh ? { log_channel_id: logCh.id } : {}),
+            },
+            undefined,
+            {
+              userMessage: "Die Words-Konfiguration konnte nicht gespeichert werden.",
+            }
+          );
+
+          invalidateConfigCache(guildId);
+
+          let cfgAfter = null;
+          try {
+            cfgAfter = await fetchConfig(guildId, { forceRefresh: true });
+          } catch (err) {
+            if (!(err instanceof BrainApiError && err.status === 404)) {
+              throw err;
+            }
+          }
+
+          if (!cfgAfter?.log_channel_id && !logCh) {
+            try {
+              const ensuredId = await ensureLogChannel(
+                interaction.guild,
+                cfgAfter || { log_channel_id: null }
+              );
+              cfgAfter = { ...(cfgAfter || {}), log_channel_id: ensuredId };
+            } catch (err) {
+              logger.error({ err, guildId }, "Konnte Log-Channel nicht erstellen");
+            }
+          }
+
+          await interaction.editReply({
+            content: `Words-Setup gespeichert (min=${min})`,
+          });
+          return;
+        }
+        case "switch": {
+          const state = interaction.options.getString("state");
+          await brainApi.patch(
+            `/words/config/${guildId}`,
+            { enabled: state === "on" ? 1 : 0 },
+            undefined,
+            {
+              userMessage: "Der Words-Status konnte nicht aktualisiert werden.",
+            }
+          );
+          invalidateConfigCache(guildId);
+          await interaction.reply({
+            content: `Words ist jetzt ${state === "on" ? "aktiv" : "inaktiv"}.`,
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+        case "channel_add": {
+          const category = interaction.options.getChannel("category");
+          await brainApi.post(
+            `/words/categories`,
+            {
+              guild_id: guildId,
+              category_id: category.id,
+            },
+            undefined,
+            {
+              userMessage: "Die Kategorie konnte nicht hinzugefügt werden.",
+            }
+          );
+          invalidateCategoryCache(guildId);
+          await interaction.reply({
+            content: `Kategorie ${category.name} hinzugefügt.`,
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+        case "channel_remove": {
+          const category = interaction.options.getChannel("category");
+          await brainApi.delete(
+            `/words/categories`,
+            { data: { guild_id: guildId, category_id: category.id } },
+            {
+              userMessage: "Die Kategorie konnte nicht entfernt werden.",
+            }
+          );
+          invalidateCategoryCache(guildId);
+          await interaction.reply({
+            content: `Kategorie ${category.name} entfernt.`,
+            flags: MessageFlags.Ephemeral,
+          });
+          return;
+        }
+        case "reports": {
+          const user = interaction.options.getUser("user");
+          const params = new URLSearchParams({
+            guild_id: guildId,
+            limit: "3",
+          });
+          if (user) params.set("user_id", user.id);
+
+          const data = await brainApi.get(
+            `/words/reports?${params.toString()}`,
+            undefined,
+            {
+              userMessage: "Die Reports konnten nicht geladen werden.",
+            }
+          );
+
+          const list = Array.isArray(data?.items) ? data.items : [];
+          if (list.length === 0) {
+            await interaction.reply({
+              content: "Keine Reports gefunden.",
+              flags: MessageFlags.Ephemeral,
+            });
+            return;
+          }
+
+          const table = formatReportTable(list);
+          const header = user ? `Berichte für ${user.toString()}` : "Letzte Reports";
+          await interaction.reply({
+            content: `\n**${header}**\n\`\`\`\n${table}\n\`\`\``,
+          });
+          return;
+        }
+        default:
+          await interaction.reply({
+            content: "Unbekannter Words-Subcommand.",
+            flags: MessageFlags.Ephemeral,
+          });
       }
-      return interaction.editReply({
-        content: `âœ“ Words-Setup gespeichert (min=${min})`,
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-
-    if (sub === "switch") {
-      const state = interaction.options.getString("state");
-      await api.patch(`/words/config/${guildId}`, {
-        enabled: state === "on" ? 1 : 0,
-      });
-      return interaction.reply({
-        content: `Words ist jetzt ${state === "on" ? "aktiv" : "inaktiv"}.`,
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-
-    if (sub === "channel_add") {
-      const cat = interaction.options.getChannel("category");
-      await api.post(`/words/categories`, {
-        guild_id: guildId,
-        category_id: cat.id,
-      });
-      return interaction.reply({
-        content: `Kategorie ${cat.name} hinzugefügt.`,
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-
-    if (sub === "channel_remove") {
-      const cat = interaction.options.getChannel("category");
-      await api.delete(`/words/categories`, {
-        data: { guild_id: guildId, category_id: cat.id },
-      });
-      return interaction.reply({
-        content: `Kategorie ${cat.name} entfernt.`,
-        flags: MessageFlags.Ephemeral,
-      });
-    }
-
-    if (sub === "reports") {
-      const user = interaction.options.getUser("user");
-      const params = new URLSearchParams({
-        guild_id: guildId,
-        limit: "3",
-      });
-      if (user) params.set("user_id", user.id);
-      const { data } = await api.get(`/words/reports?${params.toString()}`);
-      const list = data.items || [];
-      if (list.length === 0)
-        return interaction.reply({
-          content: "Keine Reports gefunden.",
-          flags: MessageFlags.Ephemeral,
-        });
-      const headers = ["ID", "Wörter", "Status"];
-      const rows = list.map((r) => [
-        `#${r.id}`,
-        String(r.word_count),
-        String(r.status ?? "-"),
-      ]);
-      const widths = headers.map((header, idx) =>
-        Math.max(header.length, ...rows.map((row) => row[idx].length))
+    } catch (error) {
+      logger.error({ err: error, guildId, sub }, "Fehler in Words-SlashCommand");
+      await respondWithApiError(
+        interaction,
+        error,
+        "Beim Ausführen des Befehls ist ein Fehler aufgetreten."
       );
-      const formatRow = (row) =>
-        row.map((value, idx) => value.padEnd(widths[idx])).join(" | ");
-      const separator = widths.map((w) => "-".repeat(w)).join("-+-");
-      const table = [
-        formatRow(headers),
-        separator,
-        ...rows.map(formatRow),
-      ].join("\n");
-      return interaction.reply({
-        content: `\n\*\*${user}\*\*\n\`\`\`\n${table}\n\`\`\``,
-      });
     }
   },
 
   async executeMessage(message) {
+    if (message.author.bot) return;
+    const guildId = message.guild?.id;
+    if (!guildId) return;
+
+    let cfg;
     try {
-      if (message.author.bot) return;
-      const guildId = message.guild.id;
-      const cfg = await fetchConfig(guildId);
-      if (!cfg || !cfg.enabled) return;
-      const categories = await fetchCategories(guildId);
-      if (!isMonitoredChannel(categories, message.channel)) return;
-
-      const content = message.content || "";
-      const trimmed = content.trim();
-      if (!trimmed) return; // nur Text auswerten
-
-      // Prefix-Ignore
-      let prefixes = ["(", "{", "[", ")", "]", "}"];
-      if (cfg.ignore_prefixes) {
-        try {
-          const parsed = JSON.parse(cfg.ignore_prefixes);
-          if (Array.isArray(parsed)) prefixes = parsed;
-        } catch {}
+      cfg = await fetchConfig(guildId);
+    } catch (error) {
+      if (error instanceof BrainApiError && error.status === 404) {
+        logger.debug({ guildId }, "Keine Words-Konfiguration gefunden");
+      } else {
+        logger.error({ err: error, guildId }, "Words-Konfiguration konnte nicht geladen werden");
       }
-      if (prefixes.some((p) => trimmed.startsWith(p))) return;
+      return;
+    }
 
-      const words = countWords(trimmed);
-      if (words < 2) return; // Emotes/Leer
+    if (!cfg || !cfg.enabled) return;
 
-      // Nur Mindestwert präfen; Standard-Minimum = 2, wenn nicht gesetzt
-      const min = Number(cfg?.min_words);
-      const under = words < min;
-      console.log(`${min} | ${words} | ${under}`);
-      if (!under) return;
+    let categories;
+    try {
+      categories = await fetchCategories(guildId);
+    } catch (error) {
+      logger.error({ err: error, guildId }, "Categories für Words konnten nicht geladen werden");
+      return;
+    }
 
-      // Differenz = fehlende Wörter bis zum Minimum
-      const diff = Math.max(min - words, 0);
+    if (!isMonitoredChannel(categories, message.channel)) return;
 
-      // Report in DB anlegen
-      const { data: createRes } = await api.post(`/words/reports`, {
-        guild_id: guildId,
-        channel_id: message.channel.id,
-        message_id: message.id,
-        user_id: message.author.id,
-        username: message.author.username,
-        content: content.slice(0, 1900),
-        word_count: words,
-        min_words: min,
-        // max_words nicht mehr verwendet
-        diff,
-        status: "auto",
-      });
-      const rep = createRes.report;
+    const content = message.content ?? "";
+    const trimmed = content.trim();
+    if (!trimmed) return;
 
-      // Antwort im Channel (User kann Prüfung anfordern)
-      const row = new ActionRowBuilder().addComponents(
-        dc.createButton(
-          `w_req_${rep.id}`,
-          "Manuelle Prüfung anfordern",
-          ButtonStyle.Danger,
-          false
-        )
+    const prefixes = resolveIgnorePrefixes(cfg);
+    if (prefixes.some((prefix) => trimmed.startsWith(prefix))) return;
+
+    const words = countWords(trimmed);
+    if (words < 2) return;
+
+    const min = Number(cfg?.min_words ?? 2);
+    const under = words < min;
+    logger.debug({ guildId, min, words, under }, "Words Schwellenwertprüfung");
+    if (!under) return;
+
+    const diff = Math.max(min - words, 0);
+
+    let createRes;
+    try {
+      createRes = await brainApi.post(
+        `/words/reports`,
+        {
+          guild_id: guildId,
+          channel_id: message.channel.id,
+          message_id: message.id,
+          user_id: message.author.id,
+          username: message.author.username,
+          content: content.slice(0, 1900),
+          word_count: words,
+          min_words: min,
+          diff,
+          status: "auto",
+        },
+        undefined,
+        {
+          userMessage:
+            "Ich konnte den Report gerade nicht speichern. Bitte versuch es später erneut.",
+        }
       );
-      row.addComponents(
-        dc.createButton(
-          `w_ack_${rep.id}`,
-          "Verstanden",
-          ButtonStyle.Success,
-          false
-        )
+    } catch (error) {
+      logger.error(
+        { err: error, guildId, channelId: message.channel.id },
+        "Erstellung eines Words-Reports fehlgeschlagen"
       );
-      await message.reply({
-        content: `⚠️ Deine Nachricht unterschreitet die geforderte Wortanzahl (min=${min}). Klicke auf "Verstanden" oder fordere eine manuelle Prüfung an.`,
-        components: [row],
+      await respondWithApiError(
+        message,
+        error,
+        "⚠️ Ich konnte deinen Report gerade nicht speichern. Bitte versuch es später erneut."
+      );
+      return;
+    }
+
+    const rep = createRes?.report;
+    if (!rep) {
+      logger.error({ guildId, createRes }, "Words-Report Antwort enthält kein report-Objekt");
+      return;
+    }
+
+    const row = new ActionRowBuilder().addComponents(
+      dc.createButton(
+        `w_req_${rep.id}`,
+        "Manuelle Prüfung anfordern",
+        ButtonStyle.Danger,
+        false
+      ),
+      dc.createButton(`w_ack_${rep.id}`, "Verstanden", ButtonStyle.Success, false)
+    );
+
+    await message.reply({
+      content: `⚠️ Deine Nachricht unterschreitet die geforderte Wortanzahl (min=${min}). Klicke auf "Verstanden" oder fordere eine manuelle Prüfung an.`,
+      components: [row],
+    });
+
+    let logChannelId = cfg.log_channel_id;
+    if (!logChannelId) {
+      try {
+        logChannelId = await ensureLogChannel(message.guild, cfg);
+        cfg.log_channel_id = logChannelId;
+      } catch (error) {
+        logger.error({ err: error, guildId }, "Konnte Log-Channel für Words nicht sicherstellen");
+        return;
+      }
+    }
+
+    const logChannel = message.guild.channels.cache.get(logChannelId);
+    if (!logChannel) {
+      logger.warn({ guildId, logChannelId }, "Configured Words-Log Channel nicht gefunden");
+      return;
+    }
+
+    try {
+      const actions = new ActionRowBuilder().addComponents(
+        dc.createButton(`w_st_delete_${rep.id}`, "Löschen", ButtonStyle.Danger, false),
+        dc.createButton(`w_st_ignore_${rep.id}`, "Ignorieren", ButtonStyle.Secondary, false),
+        dc.createButton(`w_st_confirm_${rep.id}`, "Validiert", ButtonStyle.Success, false)
+      );
+      const embed = buildReportEmbed(rep);
+      const logMsg = await logChannel.send({
+        embeds: [embed],
+        components: [actions],
       });
 
-      // Log in Log-Channel
-      const logChannelId = await ensureLogChannel(message.guild, cfg);
-      const logChannel = message.guild.channels.cache.get(logChannelId);
-      if (logChannel) {
-        const actions = new ActionRowBuilder().addComponents(
-          dc.createButton(
-            `w_st_delete_${rep.id}`,
-            "Löschen",
-            ButtonStyle.Danger,
-            false
-          ),
-          dc.createButton(
-            `w_st_ignore_${rep.id}`,
-            "Ignorieren",
-            ButtonStyle.Secondary,
-            false
-          ),
-          dc.createButton(
-            `w_st_confirm_${rep.id}`,
-            "Validiert",
-            ButtonStyle.Success,
-            false
-          )
-        );
-        const embed = buildReportEmbed(rep);
-        const logMsg = await logChannel.send({
-          embeds: [embed],
-          components: [actions],
-        });
-        await api.patch(`/words/reports/${rep.id}`, {
+      await brainApi.patch(
+        `/words/reports/${rep.id}`,
+        {
           log_channel_id: logChannelId,
           log_message_id: logMsg.id,
-        });
-      }
-    } catch (err) {
-      console.error("[words] Fehler in executeMessage:", err);
+        },
+        undefined,
+        {
+          userMessage: "Der Report konnte nicht im Log verknüpft werden.",
+        }
+      );
+    } catch (error) {
+      logger.error(
+        { err: error, guildId, logChannelId },
+        "Konnte Words-Report nicht in Log verlinken"
+      );
     }
   },
 };
+
+module.exports.__internal = {
+  countWords,
+  formatReportTable,
+  resolveIgnorePrefixes,
+};
+
